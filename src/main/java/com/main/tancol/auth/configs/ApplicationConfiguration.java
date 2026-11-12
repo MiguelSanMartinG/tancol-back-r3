@@ -26,7 +26,8 @@ public class ApplicationConfiguration {
     // Define como recuperar el usuario.
     @Bean
     UserDetailsService userDetailsService() {
-        return username -> empleadosRepository.findByNombreUsuario(username)
+        return username -> empleadosRepository.findWithPermisosByNombreUsuario(username).stream()
+                .findFirst()
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 

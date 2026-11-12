@@ -25,7 +25,8 @@ public class ProfileSpecification implements Specification<ProfileEntity> {
     }
 
      public Specification<ProfileEntity> getSpecificationByFilters(Map<String,String> params){
-        Specification<ProfileEntity> specification = Specification.where(this.filterByDeleted("false"));
+        Specification<ProfileEntity> specification = Specification.where(this.fetchAssociations())
+                .and(this.filterByDeleted("false"));
 
         if (params == null || params.isEmpty()) {
             return specification;
@@ -61,11 +62,40 @@ public class ProfileSpecification implements Specification<ProfileEntity> {
         };
     }
 
-    private Specification<ProfileEntity> filterByRoleId(String value) {
-        return (root,query, cb) ->{
-            Join<ProfileEntity, RoleEntity> join = root.join("role");
-            return cb.equal(join.get("id"), value);
+    private Specification<ProfileEntity> fetchAssociations() {
+        return (root, query, cb) -> {
+            if (query != null && !isCountQuery(query)) {
+                var module = root.fetch("module", JoinType.LEFT);
+                var parent = module.fetch("parent", JoinType.LEFT);
+                parent.fetch("parent", JoinType.LEFT);
+                root.fetch("role", JoinType.LEFT);
+                query.distinct(true);
+            }
+            return cb.conjunction();
         };
+    }
+
+    private static boolean isCountQuery(CriteriaQuery<?> query) {
+        Class<?> type = query.getResultType();
+        return type == Long.class || type == long.class;
+    }
+
+    private static Join<?, ?> joinOrReuse(From<?, ?> from, String attribute) {
+        for (Join<?, ?> join : from.getJoins()) {
+            if (attribute.equals(join.getAttribute().getName())) {
+                return join;
+            }
+        }
+        for (Fetch<?, ?> fetch : from.getFetches()) {
+            if (attribute.equals(fetch.getAttribute().getName()) && fetch instanceof Join<?, ?> join) {
+                return join;
+            }
+        }
+        return from.join(attribute, JoinType.LEFT);
+    }
+
+    private Specification<ProfileEntity> filterByRoleId(String value) {
+        return (root, query, cb) -> cb.equal(joinOrReuse(root, "role").get("id"), Long.valueOf(value));
     }
 
     private Specification<ProfileEntity> filterById(String id){

@@ -11,9 +11,12 @@ import com.main.tancol.cliente.repositories.ClienteNombreHistorialRepository;
 import com.main.tancol.cliente.repositories.ClienteRepository;
 import com.main.tancol.cliente.repositories.TiposClientesRepository;
 import com.main.tancol.cliente.service.interfaces.IClienteService;
+import com.main.tancol.cliente.util.ClientePageSpecification;
 import com.main.tancol.cliente.util.ClienteSpecification;
 import com.main.tancol.cliente.util.ClienteValueMapper;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.helpers.EmpleadoContext;
 import com.main.tancol.logistica.entities.rutas.RutasEntity;
@@ -23,6 +26,8 @@ import com.main.tancol.proveedor.enums.TipoPago;
 import com.main.tancol.proveedor.util.InformacionFiscalValueMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -264,6 +269,72 @@ public class ClienteService implements IClienteService {
         return list.stream().map(cliente -> mapearConHistorial(cliente, historiales)).toList();
     }
 
+    private static final Set<String> PAGE_KEYS = Set.of("page", "pageSize", "search");
+    private static final Set<String> FILTER_KEYS = Set.of(
+            "noCliente", "nombreComercial", "razonSocial", "idTipoDeCliente", "telefono", "fechaAlta", "createdAt", "updatedAt"
+    );
+    private static final Map<String, String> SORT_PATHS = Map.of(
+            "noCliente", "idCliente",
+            "nombreComercial", "nombreComercial",
+            "razonSocial", "informacionFiscal.razonSocial",
+            "nombreTipoCliente", "tipoDeCliente.nombre",
+            "idTipoDeCliente", "tipoDeCliente.nombre",
+            "telefono", "telefono",
+            "fechaAlta", "fechaAlta",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<ClienteResponseDTO> getPage(Map<String, String> params) {
+        Map<String, String> safeParams = params == null ? Map.of() : params;
+        int page = positiveInt(safeParams.get("page"), 1);
+        int pageSize = Math.min(100, positiveInt(safeParams.get("pageSize"), 50));
+        String search = blankToNull(safeParams.get("search"));
+        Map<String, String> filters = new LinkedHashMap<>();
+        String sortKey = null;
+        String sortDirection = null;
+        for (Map.Entry<String, String> entry : safeParams.entrySet()) {
+            String key = entry.getKey();
+            if (PAGE_KEYS.contains(key)) {
+                continue;
+            }
+            if (key.startsWith("filter_")) {
+                String name = key.substring("filter_".length());
+                if (!FILTER_KEYS.contains(name)) {
+                    throw new FilterNotFound("Invalid filter: " + key);
+                }
+                filters.put(name, entry.getValue());
+                continue;
+            }
+            if (key.startsWith("sort_")) {
+                String name = key.substring("sort_".length());
+                if (!SORT_PATHS.containsKey(name)) {
+                    throw new FilterNotFound("Invalid filter: " + key);
+                }
+                if (sortKey == null) {
+                    sortKey = name;
+                    sortDirection = entry.getValue();
+                }
+                continue;
+            }
+            throw new FilterNotFound("Invalid filter: " + key);
+        }
+        Page<ClienteEntity> result = repository.findAll(
+                new ClientePageSpecification(search, filters),
+                PageRequest.of(page - 1, pageSize, pageSort(sortKey, sortDirection))
+        );
+        List<ClienteEntity> content = result.getContent();
+        Map<UUID, Map<TipoNombreHistorial, List<String>>> historiales = cargarUltimosHistoriales(
+                content.stream().map(ClienteEntity::getId).toList()
+        );
+        List<ClienteResponseDTO> items = content.stream()
+                .map(cliente -> mapearConHistorial(cliente, historiales))
+                .toList();
+        return new PageResponse<>(items, result.getTotalElements(), page, pageSize);
+    }
+
     private ClienteResponseDTO mapearConHistorial(ClienteEntity cliente,
                                                   Map<UUID, Map<TipoNombreHistorial, List<String>>> historiales) {
         Map<TipoNombreHistorial, List<String>> porTipo =
@@ -297,5 +368,35 @@ public class ClienteService implements IClienteService {
 
     public Specification<ClienteEntity> filterWithParameters(Map<String, String> params) {
         return new ClienteSpecification().getSpecificationByFilters(params);
+    }
+
+    private static Sort pageSort(String sortKey, String sortDirection) {
+        Sort tieBreak = Sort.by(Sort.Direction.ASC, "id");
+        if (sortKey == null) {
+            return Sort.by(Sort.Direction.ASC, "idCliente").and(tieBreak);
+        }
+        String direction = sortDirection == null ? "" : sortDirection.trim();
+        if (!direction.equals("ASC") && !direction.equals("DESC")) {
+            throw new FilterNotFound("Invalid filter: sort_" + sortKey);
+        }
+        return Sort.by(Sort.Direction.valueOf(direction), SORT_PATHS.get(sortKey)).and(tieBreak);
+    }
+
+    private static int positiveInt(String raw, int fallback) {
+        if (raw == null || raw.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Math.max(1, Integer.parseInt(raw.trim()));
+        } catch (NumberFormatException ex) {
+            throw new FilterNotFound("Invalid filter: " + raw);
+        }
+    }
+
+    private static String blankToNull(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        return raw.trim();
     }
 }

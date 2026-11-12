@@ -6,6 +6,7 @@ import com.main.tancol.cliente.dto.response.ClienteResponseDTO;
 import com.main.tancol.cliente.dto.response.HistoricoPrecioClienteResponseDTO;
 import com.main.tancol.cliente.service.ClienteProductoService;
 import com.main.tancol.cliente.service.ClienteService;
+import com.main.tancol.common.dto.PageResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,11 @@ public class ClienteController {
 
          List<ClienteResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<ClienteResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

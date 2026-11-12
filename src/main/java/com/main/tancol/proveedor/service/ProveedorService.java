@@ -1,6 +1,9 @@
 package com.main.tancol.proveedor.service;
 
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.proveedor.dto.request.ProveedorRequestDTO;
 import com.main.tancol.proveedor.dto.response.ProveedorResponseDTO;
 import com.main.tancol.proveedor.entity.ProveedorEntity;
@@ -10,9 +13,12 @@ import com.main.tancol.proveedor.repositories.ProveedorRepository;
 import com.main.tancol.proveedor.repositories.TipoProveedorRepository;
 import com.main.tancol.proveedor.service.interfaces.IProveedorService;
 import com.main.tancol.proveedor.util.InformacionFiscalValueMapper;
+import com.main.tancol.proveedor.util.ProveedorPageSpecification;
 import com.main.tancol.proveedor.util.ProveedorSpecification;
 import com.main.tancol.proveedor.util.ProveedorValueMapper;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -55,6 +61,54 @@ public class ProveedorService implements IProveedorService {
         List<ProveedorEntity> list = repository.findAll(filterWithParameters(params));
         List<ProveedorResponseDTO> response = list.stream().map(ProveedorValueMapper::ProveedorEntityToResponse).toList();
         return response;
+    }
+
+    private static final Set<String> PAGE_FILTER_KEYS = Set.of(
+            "nombreComercial", "razonSocial", "rfc", "idTipoProveedor", "nombreTipoProveedor",
+            "tipoContribuyente", "createdAt", "updatedAt"
+    );
+    /** Ordenes por tipo: se resuelven en la especificacion (primer tipo alfabetico) por ser ManyToMany. */
+    private static final Set<String> PAGE_SORT_TIPO_KEYS = Set.of("nombreTipoProveedor", "idTipoProveedor");
+    private static final Map<String, String> PAGE_SORT_PATHS = Map.of(
+            "nombreComercial", "nombreComercial",
+            "razonSocial", "informacionFiscal.razonSocial",
+            "rfc", "informacionFiscal.rfc",
+            "tipoContribuyente", "informacionFiscal.tipoContribuyenteFiscal",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+    private static final Set<String> PAGE_SORT_KEYS;
+
+    static {
+        Set<String> keys = new LinkedHashSet<>(PAGE_SORT_PATHS.keySet());
+        keys.addAll(PAGE_SORT_TIPO_KEYS);
+        PAGE_SORT_KEYS = Set.copyOf(keys);
+    }
+
+    @Override
+    @Transactional
+    public PageResponse<ProveedorResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage page = CatalogPage.parse(params, PAGE_FILTER_KEYS, PAGE_SORT_KEYS);
+        Sort.Direction tipoSort = null;
+        Sort sort;
+        if (page.sortKey() != null && PAGE_SORT_TIPO_KEYS.contains(page.sortKey())) {
+            String direction = page.sortDirection() == null ? "" : page.sortDirection().trim();
+            if (!direction.equals("ASC") && !direction.equals("DESC")) {
+                throw new FilterNotFound("Invalid filter: sort_" + page.sortKey());
+            }
+            tipoSort = Sort.Direction.valueOf(direction);
+            sort = Sort.unsorted();
+        } else {
+            sort = page.sort(PAGE_SORT_PATHS, Sort.by(Sort.Direction.DESC, "createdAt"), "id");
+        }
+        Page<ProveedorEntity> result = repository.findAll(
+                new ProveedorPageSpecification(page.search(), page.filters(), tipoSort),
+                page.pageable(sort)
+        );
+        List<ProveedorResponseDTO> items = result.getContent().stream()
+                .map(ProveedorValueMapper::ProveedorEntityToResponse)
+                .toList();
+        return new PageResponse<>(items, result.getTotalElements(), page.page(), page.pageSize());
     }
 
     @Override

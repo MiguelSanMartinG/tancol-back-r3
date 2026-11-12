@@ -1,6 +1,8 @@
 package com.main.tancol.orden.service;
 
 import com.main.tancol.almacen.entities.AlmacenEntity;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.almacen.entities.InventarioEntity;
 import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.AlmacenRepository;
@@ -24,6 +26,7 @@ import com.main.tancol.orden.enums.SolicitudEstatus;
 import com.main.tancol.orden.repositories.OrdenRepository;
 import com.main.tancol.orden.repositories.PartidaOrdenRepository;
 import com.main.tancol.orden.service.interfaces.IOrdenService;
+import com.main.tancol.orden.util.OrdenPageSpecification;
 import com.main.tancol.orden.util.OrdenSpecification;
 import com.main.tancol.orden.util.OrdenValueMapper;
 import com.main.tancol.orden.util.PartidaOrdenValueMapper;
@@ -228,6 +231,57 @@ public class OrdenService implements IOrdenService {
         return list.stream().map((x) -> OrdenValueMapper.OrdenEntityToResponseDTO(x, x.getPartidas())).toList();
     }
 
+    private static final java.util.Set<String> SOLICITUD_FILTERS = java.util.Set.of(
+            "folio", "proveedor", "totalOrden", "prioridad", "fechaSolicitud", "fechaModificacion", "solicitudEstatus"
+    );
+    private static final java.util.Map<String, String> SOLICITUD_SORTS = java.util.Map.of(
+            "folio", "folio",
+            "proveedor", "proveedor.nombreComercial",
+            "totalOrden", "totalOrden",
+            "prioridad", "prioridad",
+            "fechaSolicitud", "getFechaCreacionSolicitud",
+            "fechaModificacion", "updatedAt",
+            "solicitudEstatus", "solicitudEstatus"
+    );
+    private static final java.util.Set<String> FACTURACION_FILTERS = java.util.Set.of(
+            "folio", "proveedor", "folioExterno", "totalOrden", "prioridad", "fechaSolicitud", "fechaModificacion", "estatusFactura", "fechaFacturacion"
+    );
+    private static final java.util.Map<String, String> FACTURACION_SORTS = java.util.Map.of(
+            "folio", "folio",
+            "proveedor", "proveedor.nombreComercial",
+            "folioExterno", "folioExterno",
+            "totalOrden", "totalOrden",
+            "prioridad", "prioridad",
+            "fechaSolicitud", "createdAt",
+            "fechaModificacion", "updatedAt",
+            "estatusFactura", "facturacionEstado",
+            "fechaFacturacion", "fechaFacturacion"
+    );
+    private static final java.util.Set<String> RECIBO_FILTERS = java.util.Set.of(
+            "folio", "proveedor", "prioridad", "fechaSolicitud", "fechaRecibo", "recepcionEstatus"
+    );
+    private static final java.util.Map<String, String> RECIBO_SORTS = java.util.Map.of(
+            "folio", "folio",
+            "proveedor", "proveedor.nombreComercial",
+            "prioridad", "prioridad",
+            "fechaSolicitud", "getFechaCreacionSolicitud",
+            "fechaRecibo", "fechaRecibo",
+            "recepcionEstatus", "recepcionEstatus"
+    );
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<SolicitudOrdenResponseDTO> getPageSolicitud(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, SOLICITUD_FILTERS, SOLICITUD_SORTS.keySet());
+        var result = ordenRepository.findAll(
+                new OrdenPageSpecification(OrdenPageSpecification.Stage.SOLICITUD, query.search(), query.filters()),
+                query.pageable(query.sort(SOLICITUD_SORTS, Sort.by(Sort.Direction.ASC, "folio"), "id"))
+        );
+        var items = result.getContent().stream()
+                .map(row -> OrdenValueMapper.OrdenEntityToResponseDTO(row, row.getPartidas()))
+                .toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
+    }
+
     public Specification<OrdenEntity> filterWithParameters(Map<String, String> params) {
         return new OrdenSpecification().getSpecificationByFilters(params);
     }
@@ -292,6 +346,17 @@ public class OrdenService implements IOrdenService {
         return list.stream().map(OrdenValueMapper::OrdenFacturacionEntityToResponseDTO).toList();
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<FacturacionOrdenResponseDTO> getPageFacturacion(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, FACTURACION_FILTERS, FACTURACION_SORTS.keySet());
+        var result = ordenRepository.findAll(
+                new OrdenPageSpecification(OrdenPageSpecification.Stage.FACTURACION, query.search(), query.filters()),
+                query.pageable(query.sort(FACTURACION_SORTS, Sort.by(Sort.Direction.ASC, "updatedAt"), "id"))
+        );
+        var items = result.getContent().stream().map(OrdenValueMapper::OrdenFacturacionEntityToResponseDTO).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
+    }
+
     public RecepcionOrdenResponseDTO cambiarARecibo(UUID id, Map<String, FacturacionOrdenEstatus> accion) {
 
         OrdenEntity query = this.ordenRepository.findById(id).orElseThrow(() -> new IDNotFound("No se encontró la id de la orden"));
@@ -307,6 +372,17 @@ public class OrdenService implements IOrdenService {
     public List<RecepcionOrdenResponseDTO> getAllRecibo() {
         List<OrdenEntity> list = ordenRepository.findByRecepcionEstatusNotNullOrderByUpdatedAtAsc();
         return list.stream().map(OrdenValueMapper::OrdenEntityToRecepcionOrdenResponseDTO).toList();
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<RecepcionOrdenResponseDTO> getPageRecibo(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, RECIBO_FILTERS, RECIBO_SORTS.keySet());
+        var result = ordenRepository.findAll(
+                new OrdenPageSpecification(OrdenPageSpecification.Stage.RECIBO, query.search(), query.filters()),
+                query.pageable(query.sort(RECIBO_SORTS, Sort.by(Sort.Direction.ASC, "updatedAt"), "id"))
+        );
+        var items = result.getContent().stream().map(OrdenValueMapper::OrdenEntityToRecepcionOrdenResponseDTO).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     public RecepcionOrdenResponseDTO getByIdRecibo(UUID id) {

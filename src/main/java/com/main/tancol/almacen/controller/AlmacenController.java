@@ -1,5 +1,6 @@
 package com.main.tancol.almacen.controller;
 import com.main.tancol.almacen.dto.request.AlmacenRequestDTO;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.almacen.dto.response.AlmacenResponseDTO;
 import com.main.tancol.almacen.service.AlmacenService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +35,11 @@ public class AlmacenController {
     public ResponseEntity<List<AlmacenResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<AlmacenResponseDTO> response = almacenService.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<AlmacenResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(almacenService.getPage(params));
     }
 
     @GetMapping("/{id}")

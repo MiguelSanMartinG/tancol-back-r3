@@ -1,5 +1,6 @@
 package com.main.tancol.logistica.service.interfaces;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.logistica.dto.request.VehiculosRequestDTO;
 import com.main.tancol.logistica.dto.response.VehiculosResponseDTO;
 
@@ -10,6 +11,8 @@ public interface IVehiculosService {
     VehiculosResponseDTO create(VehiculosRequestDTO dto);
 
     List<VehiculosResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<VehiculosResponseDTO> getPage(Map<String, String> params);
 
     VehiculosResponseDTO getById(UUID id);
 

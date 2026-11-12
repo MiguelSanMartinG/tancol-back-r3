@@ -1,6 +1,8 @@
 package com.main.tancol.empleados.service;
 
 import com.main.tancol.cliente.service.interfaces.IClienteService;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.dto.request.EmpleadosRequestDTO;
 import com.main.tancol.empleados.dto.response.EmpleadosResponseDTO;
@@ -11,6 +13,7 @@ import com.main.tancol.empleados.repositories.DepartamentoRepository;
 import com.main.tancol.empleados.repositories.EmpleadosRepository;
 import com.main.tancol.empleados.repositories.TiposEmpleadosRepository;
 import com.main.tancol.empleados.service.interfaces.IEmpleadosService;
+import com.main.tancol.empleados.util.EmpleadosPageSpecification;
 import com.main.tancol.empleados.util.EmpleadosSpecification;
 import com.main.tancol.empleados.util.EmpleadosValueMapper;
 import com.main.tancol.permisos.entities.RoleEntity;
@@ -20,12 +23,14 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -120,6 +125,35 @@ public class EmpleadosService implements IEmpleadosService {
     public List<EmpleadosResponseDTO> getAll(Map<String, String> params) {
         List<EmpleadosEntity> list = repository.findAll(filterWithParameters(params));
         return list.stream().map(EmpleadosValueMapper::EmpleadosEntityToResponse).toList();
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "nombreCompleto", "tipoEmpleado", "departamento", "role", "enabled", "createdAt", "updatedAt"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "nombreCompleto", "nombre",
+            "tipoEmpleado", "tiposEmpleados.nombre",
+            "departamento", "departamento.nombre",
+            "role", "role.name",
+            "enabled", "enabled",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<EmpleadosResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        var result = repository.findAll(
+                new EmpleadosPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(
+                        PAGE_SORTS,
+                        Sort.by(Sort.Order.desc("enabled"), Sort.Order.asc("nombre")),
+                        "id"
+                ))
+        );
+        var items = result.getContent().stream().map(EmpleadosValueMapper::EmpleadosEntityToResponse).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     public Specification<EmpleadosEntity> filterWithParameters(Map<String, String> params) {

@@ -5,19 +5,25 @@ import com.main.tancol.almacen.dto.response.AlmacenResponseDTO;
 import com.main.tancol.almacen.entities.AlmacenEntity;
 import com.main.tancol.almacen.repositories.AlmacenRepository;
 import com.main.tancol.almacen.service.interfaces.IAlmacenService;
+import com.main.tancol.almacen.util.AlmacenPageSpecification;
 import com.main.tancol.almacen.util.AlmacenSpecification;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exceptions.exeption.PropiedaDuplicada;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.helpers.EmpleadoContext;
 import com.main.tancol.empleados.util.DepartamentoMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -88,6 +94,26 @@ public class AlmacenService implements IAlmacenService {
 
 
         return response;
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of("nombre", "status", "createdAt", "updatedAt");
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "nombre", "nombre",
+            "status", "enabled",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AlmacenResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        var result = repository.findAll(
+                new AlmacenPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, Sort.by(Sort.Direction.DESC, "createdAt"), "id"))
+        );
+        var items = result.getContent().stream().map(DepartamentoMapper::EntityToAlmacenResponseDTO).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     public Specification<AlmacenEntity> filterWithParameters(Map<String, String> params) {

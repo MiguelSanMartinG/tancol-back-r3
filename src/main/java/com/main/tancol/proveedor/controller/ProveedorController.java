@@ -1,4 +1,5 @@
 package com.main.tancol.proveedor.controller;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.proveedor.dto.request.ProveedorRequestDTO;
 import com.main.tancol.proveedor.dto.response.ProveedorResponseDTO;
 import com.main.tancol.proveedor.service.ProveedorService;
@@ -31,6 +32,11 @@ public class ProveedorController {
     public ResponseEntity<List<ProveedorResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<ProveedorResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<ProveedorResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(this.service.getPage(params));
     }
 
     @GetMapping("/{id}")

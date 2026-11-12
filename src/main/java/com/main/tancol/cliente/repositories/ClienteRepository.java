@@ -1,6 +1,10 @@
 package com.main.tancol.cliente.repositories;
 
 import com.main.tancol.cliente.entities.ClienteEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
@@ -12,5 +16,9 @@ import java.util.UUID;
 public interface ClienteRepository extends CrudRepository<ClienteEntity, UUID>, JpaSpecificationExecutor<ClienteEntity>{
     ClienteEntity getById(UUID id);
 
-    Set<ClienteEntity> findByClienteProductoRel_Cliente_Id(UUID id);     // Agrega m??todos personalizados aqu??
+    Set<ClienteEntity> findByClienteProductoRel_Cliente_Id(UUID id);
+
+    @Override
+    @EntityGraph(attributePaths = {"tipoDeCliente", "rutaAsociada"})
+    Page<ClienteEntity> findAll(Specification<ClienteEntity> spec, Pageable pageable);
 }

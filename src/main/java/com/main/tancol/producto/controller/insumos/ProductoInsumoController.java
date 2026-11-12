@@ -1,5 +1,6 @@
 package com.main.tancol.producto.controller.insumos;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.producto.dto.request.insumo.ProductoRequestDTO;
 import com.main.tancol.producto.dto.response.insumos.ProductoResponseDTO;
 import com.main.tancol.producto.dto.response.insumos.StockMinimoRevisionResponseDTO;
@@ -41,6 +42,11 @@ public class ProductoInsumoController {
     public ResponseEntity<List<ProductoResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<ProductoResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<ProductoResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

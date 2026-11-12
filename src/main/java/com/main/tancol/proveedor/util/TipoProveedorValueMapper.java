@@ -7,7 +7,7 @@ import com.main.tancol.proveedor.dto.response.*;
 import com.main.tancol.proveedor.entity.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class TipoProveedorValueMapper {
@@ -20,7 +20,7 @@ public class TipoProveedorValueMapper {
                 .updatedAt(dto.getUpdatedAt())
                 .createdAt(dto.getCreatedAt())
                 .enabled(dto.isEnabled())
-                .proveedores((dto.getProveedorEntities() == null) ? new ArrayList<>() : dto.getProveedorEntities().stream().map(ProveedorValueMapper::ProveedorEntityToResponse).toList())
+                .proveedores(List.of())
                 .build();
     }
 

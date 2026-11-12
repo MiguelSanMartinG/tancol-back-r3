@@ -1,6 +1,10 @@
 package com.main.tancol.producto.repositories;
 
 import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -11,6 +15,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductoRepository extends CrudRepository<ProductoBasicoEntity, UUID>, JpaSpecificationExecutor<ProductoBasicoEntity> {
+    @Override
+    @EntityGraph(attributePaths = {"categoriaProductoEntity", "unidadMedidaDefault"})
+    Page<ProductoBasicoEntity> findAll(Specification<ProductoBasicoEntity> spec, Pageable pageable);
+
     Optional<ProductoBasicoEntity> findByNombre(String nombre);
     boolean existsProductoByNombre(String nombre);
 

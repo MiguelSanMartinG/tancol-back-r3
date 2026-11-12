@@ -1,5 +1,7 @@
 package com.main.tancol.logistica.service.rutas;
 
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.repositories.EmpleadosRepository;
@@ -10,17 +12,20 @@ import com.main.tancol.logistica.entities.rutas.VehiculosEntity;
 import com.main.tancol.logistica.repositories.RutasRepository;
 import com.main.tancol.logistica.repositories.VehiculosRepository;
 import com.main.tancol.logistica.service.interfaces.IRutasService;
+import com.main.tancol.logistica.util.ruta.RutasPageSpecification;
 import com.main.tancol.logistica.util.ruta.RutasSpecification;
 import com.main.tancol.logistica.util.ruta.RutasValueMapper;
 import com.main.tancol.producto.entities.comerciales.ProductoComercialEntity;
 import com.main.tancol.producto.repositories.ProductoComercialRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -93,6 +98,31 @@ public class RutasService implements IRutasService {
     public List<RutasResponseDTO> getAll(Map<String, String> params) {
         List<RutasEntity> list = repository.findAll(filterWithParameters(params));
         return list.stream().map(RutasValueMapper::RutasEntityToResponse).toList();
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "nombre", "numero", "chofer", "nota", "vehiculo", "producto", "enabled"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "nombre", "nombre",
+            "numero", "numero",
+            "chofer", "chofer.nombre",
+            "nota", "letraPredeterminada",
+            "vehiculo", "vehiculo.nombre",
+            "producto", "productBase.nombre",
+            "enabled", "enabled"
+    );
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RutasResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        var result = repository.findAll(
+                new RutasPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, Sort.by(Sort.Direction.ASC, "numero"), "id"))
+        );
+        var items = result.getContent().stream().map(RutasValueMapper::RutasEntityToResponse).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     public Specification<RutasEntity> filterWithParameters(Map<String, String> params) {

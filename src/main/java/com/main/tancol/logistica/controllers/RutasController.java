@@ -1,5 +1,6 @@
 package com.main.tancol.logistica.controllers;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.logistica.dto.request.RutasRequestDTO;
 import com.main.tancol.logistica.dto.response.RutasResponseDTO;
 import com.main.tancol.logistica.service.rutas.RutasService;
@@ -34,6 +35,11 @@ public class RutasController {
     public ResponseEntity<List<RutasResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<RutasResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<RutasResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

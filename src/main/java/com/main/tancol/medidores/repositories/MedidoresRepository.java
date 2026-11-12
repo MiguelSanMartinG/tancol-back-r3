@@ -1,6 +1,8 @@
 package com.main.tancol.medidores.repositories;
 
 import com.main.tancol.medidores.entities.MedidoresEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,6 +24,10 @@ public interface MedidoresRepository extends JpaRepository<MedidoresEntity, UUID
     @EntityGraph(attributePaths = "medidoresHijos")
     @Override
     List<MedidoresEntity> findAll(Specification<MedidoresEntity> spec);
+
+    @EntityGraph(attributePaths = "unidadadMedidaDefault")
+    @Override
+    Page<MedidoresEntity> findAll(Specification<MedidoresEntity> spec, Pageable pageable);
 
     List<MedidoresEntity> findByMedidorPadre_IdMedidorIn(Collection<UUID> padreIds);
 

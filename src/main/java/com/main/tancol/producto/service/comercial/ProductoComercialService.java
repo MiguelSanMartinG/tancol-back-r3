@@ -2,6 +2,8 @@ package com.main.tancol.producto.service.comercial;
 
 import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.producto.dto.request.comercial.ProductoComercialRequestDTO;
 import com.main.tancol.producto.dto.response.comercial.ProductoComercialResponseDTO;
@@ -10,14 +12,18 @@ import com.main.tancol.producto.entities.comerciales.ProductoComercialEntity;
 import com.main.tancol.producto.repositories.CategoriaProductoComercialRepository;
 import com.main.tancol.producto.repositories.ProductoComercialRepository;
 import com.main.tancol.producto.service.interfaces.IProductoComercialService;
+import com.main.tancol.producto.util.comercial.ProductoComercialPageSpecification;
 import com.main.tancol.producto.util.comercial.ProductoComercialSpecification;
 import com.main.tancol.producto.util.comercial.ProductoComercialValueMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -86,6 +92,32 @@ public class ProductoComercialService implements IProductoComercialService {
     public List<ProductoComercialResponseDTO> getAll(Map<String, String> params) {
         List<ProductoComercialEntity> list = repository.findAll(filterWithParameters(params));
         return list.stream().map(ProductoComercialValueMapper::ProductoComercialEntityToResponse).toList();
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "sku", "nombre", "alias", "presentacion", "precio", "enabled", "createdAt", "updatedAt"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "sku", "sku",
+            "nombre", "nombre",
+            "alias", "alias",
+            "presentacion", "presentacion",
+            "precio", "precio",
+            "enabled", "enabled",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ProductoComercialResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        var result = repository.findAll(
+                new ProductoComercialPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, Sort.by(Sort.Direction.DESC, "createdAt"), "id"))
+        );
+        var items = result.getContent().stream().map(ProductoComercialValueMapper::ProductoComercialEntityToResponse).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     public Specification<ProductoComercialEntity> filterWithParameters(Map<String, String> params) {

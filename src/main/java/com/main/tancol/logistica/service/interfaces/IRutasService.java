@@ -1,5 +1,6 @@
 package com.main.tancol.logistica.service.interfaces;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.logistica.dto.request.RutasRequestDTO;
 import com.main.tancol.logistica.dto.response.RutasResponseDTO;
 
@@ -10,6 +11,8 @@ public interface IRutasService {
     RutasResponseDTO create(RutasRequestDTO dto);
 
     List<RutasResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<RutasResponseDTO> getPage(Map<String, String> params);
 
     RutasResponseDTO getById(UUID id);
 
