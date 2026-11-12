@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Coolify asigna el domain y el proxy; el puerto solo se expone en la red interna.
+    expose:
+      - "8080"
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST:?}
+      DATABASE_NAME: ${DATABASE_NAME:?}
+      DATABASE_USER: ${DATABASE_USER:?}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
+    restart: unless-stopped

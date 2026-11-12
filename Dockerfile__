@@ -1,0 +1,16 @@
+# Usa la imagen oficial de PostgreSQL como base
+FROM postgres:17.2
+
+# Establece variables de entorno
+ENV POSTGRES_DB=db_desarrollo \
+    POSTGRES_USER=admin \
+    POSTGRES_PASSWORD=porygon1!
+
+# Expone el puerto 5432 para conexiones externas
+EXPOSE 5432
+
+# Crea un volumen para la persistencia de datos
+VOLUME ["/var/lib/postgresql/data"]
+
+# Comando predeterminado para iniciar PostgreSQL
+CMD ["postgres"]

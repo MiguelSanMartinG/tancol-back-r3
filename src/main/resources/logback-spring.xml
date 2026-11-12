@@ -1,0 +1,50 @@
+<configuration>
+
+    <!-- Escanea automáticamente los cambios de configuración cada 30 segundos -->
+    <configurationScan interval="30 seconds" />
+
+    <!-- Configurar propiedades generales -->
+    <property name="LOG_HOME" value="logs" />
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss} %highlight(%-5level) [%boldMagenta(%thread)] %cyan(%logger{36}) - %msg%n" />
+    <property name="ARCHIVE_PATTERN" value="${LOG_HOME}/archived/app.%d{yyyy-MM-dd}.log" />
+
+    <!-- Appender para la consola (con colores) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Appender para archivo con rotación diaria -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_PATTERN}</fileNamePattern>
+            <maxHistory>30</maxHistory> <!-- Mantener los últimos 30 días de logs -->
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Appender para enviar los logs a Logstash (opcional) -->
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>localhost:5044</destination> <!-- Dirección del servidor Logstash -->
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+    </appender>
+
+    <!-- Configurar el nivel de logs para cada componente -->
+    <logger name="org.springframework" level="WARN" />
+    <logger name="com.example" level="DEBUG" />
+    <logger name="com.example.service" level="INFO" />
+    <logger name="com.example.repository" level="DEBUG" />
+
+    <!-- Configuración de la raíz de los logs -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+        <!-- Descomentar si deseas enviar los logs a Logstash -->
+        <!-- <appender-ref ref="LOGSTASH" /> -->
+    </root>
+
+</configuration>

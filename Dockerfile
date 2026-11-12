@@ -1,0 +1,25 @@
+# Usa una imagen base de Java
+FROM maven:3.9-eclipse-temurin-17 AS build
+
+# Establece el directorio de trabajo
+WORKDIR /app
+
+# Copia el archivo pom.xml y los archivos de configuración de Maven
+COPY pom.xml ./
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Usa una imagen más ligera para el runtime
+FROM eclipse-temurin:17-jre-alpine
+
+# Establece el directorio de trabajo para la aplicación
+WORKDIR /app
+
+# Copia el archivo .jar generado en el paso anterior
+COPY --from=build /app/target/*.jar app.jar
+
+# Expone el puerto 8080
+EXPOSE 8080
+
+# Perfil vía SPRING_PROFILES_ACTIVE (default: test en docker-compose / .env.example)
+ENTRYPOINT ["java", "-jar", "app.jar"]

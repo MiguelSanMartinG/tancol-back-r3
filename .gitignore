@@ -1,0 +1,5 @@
+/data/
+/.idea/
+/target/
+/logs/
+/dev_Dockerfile
