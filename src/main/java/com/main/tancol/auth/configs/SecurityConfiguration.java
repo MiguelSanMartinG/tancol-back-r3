@@ -1,8 +1,8 @@
 package com.main.tancol.auth.configs;
 
 
-import com.main.tancol.auth.exceptions.customHandlers.CustomAccessDeniedHandler;
-import com.main.tancol.auth.exceptions.customHandlers.CustomAuthenticationEntryPoint;
+import com.main.tancol.common.exceptions.customHandlers.CustomAccessDeniedHandler;
+import com.main.tancol.common.exceptions.customHandlers.CustomAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -30,8 +30,6 @@ public class SecurityConfiguration {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-    //Se encarga de interceptar y manejar las solicitudes HTTP antes de llegar a los controladores.
-    @Profile("???")
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
@@ -52,10 +50,14 @@ public class SecurityConfiguration {
                         request -> request
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/user/**").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/health").permitAll()
+                        .requestMatchers("/api/v1/error").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/api-docs/**").permitAll()
                         .requestMatchers("/departamento/**").permitAll()
+                        .requestMatchers("/images/**").permitAll()
                         .anyRequest().authenticated() //Indica que todas las demás solicitudes que no estén definidas previamente requerirán autenticación.
                 )
                 .authenticationProvider(authenticationProvider)
@@ -70,7 +72,7 @@ public class SecurityConfiguration {
 
     }
 
-    @Profile({"dev", "test"})
+    @Profile("-")
     @Bean
     public SecurityFilterChain filterChain2(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity

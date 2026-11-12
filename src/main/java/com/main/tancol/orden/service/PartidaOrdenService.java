@@ -3,10 +3,8 @@ package com.main.tancol.orden.service;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.orden.entities.OrdenEntity;
 import com.main.tancol.orden.repositories.OrdenRepository;
-import com.main.tancol.orden.util.PartidaOrdenValueMapper;
-import com.main.tancol.producto.entities.ProductoEntity;
+import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
 import com.main.tancol.producto.repositories.ProductoRepository;
-import com.main.tancol.proveedor.entity.TipoImpuesto;
 import com.main.tancol.proveedor.repositories.ImpuestosRepository;
 import com.main.tancol.orden.dto.request.PartidaOrdenRequestDTO;
 import com.main.tancol.orden.dto.response.PartidaOrdenResponseDTO;
@@ -39,17 +37,18 @@ public class PartidaOrdenService implements IPartidaOrdenService {
     @Override
     public PartidaOrdenEntity create(PartidaOrdenRequestDTO dto, OrdenEntity ordenEntity) {
 
-        TipoImpuesto tImpuesto = impuestosRepository.findById(dto.getIdTipoImpuesto()).orElseThrow( () -> new IDNotFound("No existe el tipo de impuesto"));
-        ProductoEntity pProductoEntity = productoRepository.findById(dto.getIdProducto()).orElseThrow( () -> new IDNotFound("No existe el producto"));
-        PartidaOrdenEntity partida = PartidaOrdenValueMapper.PartidaOrdenRequestToEntity(dto,ordenEntity,tImpuesto, pProductoEntity);
-        log.info(partida.toString());
-        return this.repository.save(partida);
+//        TipoImpuesto tImpuesto = impuestosRepository.findById(dto.getIdTipoImpuesto()).orElseThrow( () -> new IDNotFound("No existe el tipo de impuesto"));
+        ProductoBasicoEntity pProductoBasicoEntity = productoRepository.findById(dto.getIdProducto()).orElseThrow( () -> new IDNotFound("No existe el producto"));
+//        PartidaOrdenEntity partida = PartidaOrdenValueMapper.PartidaOrdenRequestToEntity(dto,ordenEntity, pProductoEntity);
+//        log.info(partida.toString());
+//        return this.repository.save(partida);
 
 //                PartidaOrdenEntity.builder()
 //                .cantidad(dto.getCantidad())
 //                .producto(productoRepository.findById(dto.getIdProducto()).orElseThrow(()->new RuntimeException("No existe el producto")))
 //                .precioUnitario(BigDecimal.valueOf(dto.getPrecio()))
 //                .build();
+        return null;
     }
 
     @Override

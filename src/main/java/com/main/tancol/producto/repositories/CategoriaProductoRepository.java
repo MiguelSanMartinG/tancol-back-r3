@@ -1,6 +1,6 @@
 package com.main.tancol.producto.repositories;
 
-import com.main.tancol.producto.entities.CategoriaProductoEntity;
+import com.main.tancol.producto.entities.insumos.CategoriaProductoEntity;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 

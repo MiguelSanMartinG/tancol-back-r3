@@ -1,6 +1,6 @@
 package com.main.tancol.orden.util;
 
-import com.main.tancol.auth.exceptions.exeption.FilterNotFound;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.orden.entities.OrdenEntity;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.criteria.CriteriaBuilder;

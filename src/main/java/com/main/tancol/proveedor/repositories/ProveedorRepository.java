@@ -9,5 +9,5 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProveedorRepository extends CrudRepository<ProveedorEntity, UUID>, JpaSpecificationExecutor<ProveedorEntity> {
-    Optional<ProveedorEntity> findByNombre(@NotNull String nombre);
+    Optional<ProveedorEntity> findByNombreComercial(@NotNull String nombre);
 }

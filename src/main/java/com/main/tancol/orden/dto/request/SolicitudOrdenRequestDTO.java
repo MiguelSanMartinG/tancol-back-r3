@@ -1,7 +1,7 @@
 package com.main.tancol.orden.dto.request;
 
 import com.main.tancol.orden.enums.Prioridad;
-import com.main.tancol.orden.enums.SolicitanteEstatus;
+import com.main.tancol.orden.enums.SolicitudEstatus;
 import lombok.Value;
 
 import java.time.LocalDateTime;
@@ -10,12 +10,11 @@ import java.util.UUID;
 
 @Value
 public class SolicitudOrdenRequestDTO {
-
-    UUID proveedorId;
-    LocalDateTime fechaSolicitud;
-    Prioridad prioridad;
     String titulo;
-    SolicitanteEstatus solicitanteEstatus;
+    LocalDateTime fechaCreacionSolicitud;
+    Prioridad prioridad;
+    UUID proveedorId;
+    SolicitudEstatus solicitudEstatus;
     List<PartidaOrdenRequestDTO> partidas;
 
 }

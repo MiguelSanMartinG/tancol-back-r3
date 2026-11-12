@@ -1,7 +1,7 @@
 package com.main.tancol.producto.service.interfaces;
 
-import com.main.tancol.producto.dto.request.ProductoRequestDTO;
-import com.main.tancol.producto.dto.response.ProductoResponseDTO;
+import com.main.tancol.producto.dto.request.insumo.ProductoRequestDTO;
+import com.main.tancol.producto.dto.response.insumos.ProductoResponseDTO;
 
 import java.util.List;
 import java.util.Map;

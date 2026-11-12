@@ -1,7 +1,6 @@
 package com.main.tancol.producto.dto.request;
 
-import com.main.tancol.producto.entities.PrecioEntity;
-import jakarta.validation.constraints.NotBlank;
+import com.main.tancol.producto.entities.PresentacionProductoBasico;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,7 +10,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * DTO for {@link PrecioEntity}
+ * DTO for {@link PresentacionProductoBasico}
  */
 @AllArgsConstructor
 @Getter

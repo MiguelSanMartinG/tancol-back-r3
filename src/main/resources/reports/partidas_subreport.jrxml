@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 7.0.3.final using JasperReports Library version 6.21.5  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="partidas_subreport" pageWidth="555" pageHeight="802" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b1e2f3a4-c5d6-7e8f-9a0b-1c2d3e4f5a6b">
+	<field name="nombre" class="java.lang.String"/>
+	<field name="cliente" class="java.lang.String"/>
+	<field name="cantidad" class="java.math.BigDecimal"/>
+	<field name="precio" class="java.math.BigDecimal"/>
+	<field name="importe" class="java.math.BigDecimal"/>
+	<field name="nombre2" class="java.lang.String"/>
+	<field name="tipos" class="java.lang.String"/>
+	<field name="comentario" class="java.lang.String"/>
+	<variable name="TOTAL_CANTIDAD" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{cantidad}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="TOTAL_IMPORTE" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{importe}]]></variableExpression>
+		<initialValueExpression><![CDATA[BigDecimal.ZERO]]></initialValueExpression>
+	</variable>
+	<columnHeader>
+		<band height="40" splitType="Stretch">
+			<rectangle>
+				<reportElement x="0" y="0" width="555" height="30" backcolor="#E6E6FA" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890"/>
+				<graphicElement>
+					<pen lineWidth="1.0" lineColor="#4B0082"/>
+				</graphicElement>
+			</rectangle>
+			<staticText>
+				<reportElement x="5" y="5" width="60" height="20" uuid="f1e2d3c4-b5a6-9876-5432-109876543210"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nombre]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="70" y="5" width="70" height="20" uuid="a2b3c4d5-e6f7-8901-2345-678901234567"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cliente]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="145" y="5" width="45" height="20" uuid="b3c4d5e6-f7a8-9012-3456-789012345678"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cant.]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="195" y="5" width="60" height="20" uuid="c4d5e6f7-a8b9-0123-4567-890123456789"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Precio]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="260" y="5" width="60" height="20" uuid="d5e6f7a8-b9c0-1234-5678-901234567890"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Importe]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="325" y="5" width="60" height="20" uuid="e6f7a8b9-c0d1-2345-6789-012345678901"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nombre 2]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="390" y="5" width="50" height="20" uuid="f7a8b9c0-d1e2-3456-7890-123456789012"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tipos]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="445" y="5" width="105" height="20" uuid="a8b9c0d1-e2f3-4567-8901-234567890123"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Comentario]]></text>
+			</staticText>
+			<line>
+				<reportElement x="65" y="0" width="1" height="30" uuid="b9c0d1e2-f3a4-5678-9012-345678901234"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="140" y="0" width="1" height="30" uuid="c0d1e2f3-a4b5-6789-0123-456789012345"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="190" y="0" width="1" height="30" uuid="d1e2f3a4-b5c6-7890-1234-567890123456"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="255" y="0" width="1" height="30" uuid="e2f3a4b5-c6d7-8901-2345-678901234567"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="320" y="0" width="1" height="30" uuid="f3a4b5c6-d7e8-9012-3456-789012345678"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="385" y="0" width="1" height="30" uuid="a4b5c6d7-e8f9-0123-4567-890123456789"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="440" y="0" width="1" height="30" uuid="b5c6d7e8-f9a0-1234-5678-901234567890"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="25" splitType="Stretch">
+			<rectangle>
+				<reportElement x="0" y="0" width="555" height="25" backcolor="#FAFAFA" uuid="c6d7e8f9-a0b1-2345-6789-012345678901">
+					<printWhenExpression><![CDATA[($V{REPORT_COUNT} % 2) == 0]]></printWhenExpression>
+				</reportElement>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</rectangle>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="5" y="2" width="60" height="20" uuid="d7e8f9a0-b1c2-3456-7890-123456789012"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nombre}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="70" y="2" width="65" height="20" uuid="e8f9a0b1-c2d3-4567-8901-234567890123"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cliente}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="145" y="2" width="40" height="20" uuid="f9a0b1c2-d3e4-5678-9012-345678901234"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cantidad}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="¤ #,##0.00" isBlankWhenNull="true">
+				<reportElement x="195" y="2" width="55" height="20" uuid="a0b1c2d3-e4f5-6789-0123-456789012345"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{precio}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="¤ #,##0.00" isBlankWhenNull="true">
+				<reportElement x="260" y="2" width="55" height="20" uuid="b1c2d3e4-f5a6-7890-1234-567890123456"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{importe}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="325" y="2" width="55" height="20" uuid="c2d3e4f5-a6b7-8901-2345-678901234567"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nombre2}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="390" y="2" width="45" height="20" uuid="d3e4f5a6-b7c8-9012-3456-789012345678"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tipos}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="445" y="2" width="105" height="20" uuid="e4f5a6b7-c8d9-0123-4567-890123456789"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{comentario}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="65" y="0" width="1" height="25" uuid="f5a6b7c8-d9e0-1234-5678-901234567890"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="140" y="0" width="1" height="25" uuid="a6b7c8d9-e0f1-2345-6789-012345678901"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="190" y="0" width="1" height="25" uuid="b7c8d9e0-f1a2-3456-7890-123456789012"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="255" y="0" width="1" height="25" uuid="c8d9e0f1-a2b3-4567-8901-234567890123"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="320" y="0" width="1" height="25" uuid="d9e0f1a2-b3c4-5678-9012-345678901234"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="385" y="0" width="1" height="25" uuid="e0f1a2b3-c4d5-6789-0123-456789012345"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="440" y="0" width="1" height="25" uuid="f1a2b3c4-d5e6-7890-1234-567890123456"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="0" y="24" width="555" height="1" uuid="a2b3c4d5-e6f7-8901-2345-678901234567"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineColor="#DDDDDD"/>
+				</graphicElement>
+			</line>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="30" splitType="Stretch">
+			<rectangle>
+				<reportElement x="0" y="0" width="555" height="25" backcolor="#E6E6FA" uuid="b3c4d5e6-f7a8-9012-3456-789012345678"/>
+				<graphicElement>
+					<pen lineWidth="1.0" lineColor="#4B0082"/>
+				</graphicElement>
+			</rectangle>
+			<staticText>
+				<reportElement x="70" y="5" width="70" height="15" uuid="c4d5e6f7-a8b9-0123-4567-890123456789"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[TOTALES:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="145" y="5" width="40" height="15" uuid="d5e6f7a8-b9c0-1234-5678-901234567890"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TOTAL_CANTIDAD}]]></textFieldExpression>
+			</textField>
+			<textField pattern="¤ #,##0.00">
+				<reportElement x="260" y="5" width="55" height="15" uuid="e6f7a8b9-c0d1-2345-6789-012345678901"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TOTAL_IMPORTE}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="140" y="0" width="1" height="25" uuid="f7a8b9c0-d1e2-3456-7890-123456789012"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="255" y="0" width="1" height="25" uuid="a8b9c0d1-e2f3-4567-8901-234567890123"/>
+				<graphicElement>
+					<pen lineColor="#4B0082"/>
+				</graphicElement>
+			</line>
+		</band>
+	</columnFooter>
+</jasperReport>

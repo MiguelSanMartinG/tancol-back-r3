@@ -1,7 +1,7 @@
 package com.main.tancol.almacen.util;
 
-import com.main.tancol.auth.exceptions.exeption.FilterNotFound;
-import com.main.tancol.almacen.entities.Almacen;
+import com.main.tancol.almacen.entities.AlmacenEntity;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -13,17 +13,17 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.Map.Entry;
 
-public class AlmacenSpecification implements Specification<Almacen> {
+public class AlmacenSpecification implements Specification<AlmacenEntity> {
 
     @SuppressWarnings("null")
     @Nullable
     @Override
-    public Predicate toPredicate(Root<Almacen> root , @Nullable CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder){
+    public Predicate toPredicate(Root<AlmacenEntity> root , @Nullable CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder){
         return null;
     }
 
-    public Specification<Almacen> getSpecificationByFilters(Map<String,String> params){
-        Specification<Almacen> specification = Specification.where(this.filterByDeleted("false"));
+    public Specification<AlmacenEntity> getSpecificationByFilters(Map<String,String> params){
+        Specification<AlmacenEntity> specification = Specification.where(this.filterByDeleted("false"));
 
         if (params == null || params.isEmpty()) {
             return specification;
@@ -32,10 +32,16 @@ public class AlmacenSpecification implements Specification<Almacen> {
         for(Entry<String, String> entry : params.entrySet()){
             switch (entry.getKey()){
                 case "id":
-                    specification = specification.and(this.filterById(entry.getValue()));
+                    specification = specification.and(this.filterByAlmacenId(entry.getValue()));
+                    break;
+                case "idAlmacen":
+                    specification = specification.and(this.filterByAlmacenId(entry.getValue()));
                     break;
                 case "nombre":
                     specification = specification.and(this.filterByName(entry.getValue()));
+                    break;
+                case "enabled":
+                    specification = specification.and(this.filterByEnabled(entry.getValue()));
                     break;
                 default:
                     throw new FilterNotFound("Invalid filter: " + entry.getKey());
@@ -46,19 +52,23 @@ public class AlmacenSpecification implements Specification<Almacen> {
         return specification;
     }
 
-    private Specification<Almacen> filterById(String id){
+    private Specification<AlmacenEntity> filterById(String id){
         return (root,query, cb) -> cb.equal(root.<UUID>get("id"), UUID.fromString(id));
     }
 
-    private Specification<Almacen> filterByName(String nombre){
+    private Specification<AlmacenEntity> filterByAlmacenId(String id){
+        return (root,query, cb) -> cb.equal(root.<UUID>get("id"), UUID.fromString(id));
+    }
+
+    private Specification<AlmacenEntity> filterByName(String nombre){
         return (root,query, cb) -> cb.like(root.get("nombre"), nombre);
     }
 
-    private Specification<Almacen> filterByEnabled(String enabled){
+    private Specification<AlmacenEntity> filterByEnabled(String enabled){
         return (root,query, cb) -> cb.equal(root.<Boolean>get("enabled"), Boolean.parseBoolean(enabled));
     }
 
-    private Specification<Almacen> filterByDeleted(String deleted){
+    private Specification<AlmacenEntity> filterByDeleted(String deleted){
         return (root,query, cb) -> cb.equal(root.<Boolean>get("deleted"), Boolean.parseBoolean(deleted));
     }
 

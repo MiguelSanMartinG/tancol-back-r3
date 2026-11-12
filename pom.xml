@@ -136,12 +136,36 @@
             <artifactId>flyway-database-postgresql</artifactId>
             <version>11.1.1</version>
             <scope>runtime</scope>
-
         </dependency>
+<!--        JASPER REPORTS-->
+        <!-- JasperReports -->
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports</artifactId>
+            <version>6.20.6</version>
+        </dependency>
+
+        <!-- JasperReports Fonts -->
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports-fonts</artifactId>
+            <version>6.20.6</version>
+        </dependency>
+
+<!--        MODEL MAPPER-->
+
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>3.2.4</version>
+        </dependency>
+
+
 
     </dependencies>
 
     <build>
+<!--        LOCAL-->
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -152,13 +176,54 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>11.1.1</version>
                 <configuration>
-                    <url>jdbc:postgresql://localhost:5432/db_desarrollo</url>
+                    <url>jdbc:postgresql://localhost:5432/railway</url>
                     <user>admin</user>
                     <password>porygon1!</password>
                     <cleanDisabled>false</cleanDisabled>
                 </configuration>
             </plugin>
         </plugins>
+
+
+<!--TEST-->
+<!--        <plugins>-->
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+<!--            <plugin>-->
+<!--                <groupId>org.flywaydb</groupId>-->
+<!--                <artifactId>flyway-maven-plugin</artifactId>-->
+<!--                <version>11.1.1</version>-->
+<!--                <configuration>-->
+<!--                    <url>jdbc:postgresql://monorail.proxy.rlwy.net:50673/railway</url>-->
+<!--                    <user>postgres</user>-->
+<!--                    <password>TdrFKLxkiNPvImDQohQWmrluXmStGakk</password>-->
+<!--                    <cleanDisabled>false</cleanDisabled>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
+
+
+<!--PROD-->
+<!--        <plugins>-->
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+<!--            <plugin>-->
+<!--                <groupId>org.flywaydb</groupId>-->
+<!--                <artifactId>flyway-maven-plugin</artifactId>-->
+<!--                <version>11.1.1</version>-->
+<!--                <configuration>-->
+<!--                    <url>jdbc:postgresql://yamanote.proxy.rlwy.net:26509/railway</url>-->
+<!--                    <user>postgres</user>-->
+<!--                    <password>UPuqEuKnCGlGtqQuLihfZzrZRWlWSYfr</password>-->
+<!--                    <cleanDisabled>false</cleanDisabled>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
+
 
     </build>
 

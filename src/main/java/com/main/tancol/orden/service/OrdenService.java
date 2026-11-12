@@ -1,13 +1,18 @@
 package com.main.tancol.orden.service;
 
-import com.main.tancol.almacen.entities.Almacen;
+import com.main.tancol.almacen.entities.AlmacenEntity;
+import com.main.tancol.almacen.entities.InventarioEntity;
+import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.AlmacenRepository;
+import com.main.tancol.almacen.repositories.InventarioRepository;
+import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
 import com.main.tancol.common.exeptions.IDNotFound;
-import com.main.tancol.orden.dto.request.OrdenFacturacionRequestDTO;
+import com.main.tancol.common.service.FolioService;
+import com.main.tancol.orden.dto.request.FacturacionOrdenRequestDTO;
+import com.main.tancol.orden.dto.request.PartidaOrdenRequestDTO;
 import com.main.tancol.orden.dto.request.RecepcionOrdenRequestDTO;
 import com.main.tancol.orden.dto.request.SolicitudOrdenRequestDTO;
-import com.main.tancol.orden.dto.request.PartidaOrdenRequestDTO;
-import com.main.tancol.orden.dto.response.OrdenFacturacionResponseDTO;
+import com.main.tancol.orden.dto.response.FacturacionOrdenResponseDTO;
 import com.main.tancol.orden.dto.response.RecepcionOrdenResponseDTO;
 import com.main.tancol.orden.dto.response.SolicitudOrdenResponseDTO;
 import com.main.tancol.orden.entities.OrdenEntity;
@@ -15,144 +20,190 @@ import com.main.tancol.orden.entities.PartidaOrdenEntity;
 import com.main.tancol.orden.enums.FacturacionOrdenEstatus;
 import com.main.tancol.orden.enums.Prioridad;
 import com.main.tancol.orden.enums.RecepcionEstatus;
-import com.main.tancol.orden.enums.SolicitanteEstatus;
+import com.main.tancol.orden.enums.SolicitudEstatus;
 import com.main.tancol.orden.repositories.OrdenRepository;
 import com.main.tancol.orden.repositories.PartidaOrdenRepository;
 import com.main.tancol.orden.service.interfaces.IOrdenService;
 import com.main.tancol.orden.util.OrdenSpecification;
 import com.main.tancol.orden.util.OrdenValueMapper;
 import com.main.tancol.orden.util.PartidaOrdenValueMapper;
-import com.main.tancol.producto.entities.ProductoEntity;
-import com.main.tancol.producto.repositories.ProductoRepository;
+import com.main.tancol.producto.entities.PresentacionProductoBasico;
+import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
+import com.main.tancol.producto.repositories.PrecioRepository;
+import com.main.tancol.producto.service.insumo.StockMinimoRevisionService;
 import com.main.tancol.proveedor.entity.ProveedorEntity;
-import com.main.tancol.proveedor.entity.TipoImpuesto;
-import com.main.tancol.proveedor.repositories.ImpuestosRepository;
-import com.main.tancol.proveedor.repositories.ProveedorRepository;
+import com.main.tancol.proveedor.entity.TipoImpuestoEntity;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrdenService implements IOrdenService {
 
-    private final OrdenRepository repository;
+    private final OrdenRepository ordenRepository;
     private final PartidaOrdenRepository partidaOrdenRepository;
-    private final ProveedorRepository proveedorRepository;
-    private final ImpuestosRepository impuestosRepository;
-    private final ProductoRepository productoRepository;
     private final AlmacenRepository almacenRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final PrecioRepository precioRepository;
+    private final EntityFinderService entityFinderService;
+    private final InventarioRepository inventarioRepository;
+    private final FolioService folioService;
+    private final UnidadesMedidaRepository unidadesMedidaRepository;
+    private final StockMinimoRevisionService stockMinimoRevisionService;
 
 
-    public OrdenService(OrdenRepository repository, PartidaOrdenRepository partidaOrdenRepository, ProveedorRepository proveedorRepository, PartidaOrdenService partidaOrdenService, ImpuestosRepository impuestosRepository, ProductoRepository productoRepository, AlmacenRepository almacenRepository, JdbcTemplate jdbcTemplate) {
-        this.repository = repository;
-        this.partidaOrdenRepository = partidaOrdenRepository;
-        this.proveedorRepository = proveedorRepository;
-
-        this.impuestosRepository = impuestosRepository;
-        this.productoRepository = productoRepository;
-        this.almacenRepository = almacenRepository;
-        this.jdbcTemplate = jdbcTemplate;
-    }
-
-    private static BigDecimal calcularTotalPartida(PartidaOrdenRequestDTO row, TipoImpuesto t) {
+    private BigDecimal calcularTotalPartida(
+            PartidaOrdenRequestDTO row,
+            TipoImpuestoEntity tipoImpuestoEntity,
+            PresentacionProductoBasico precio) {
         // TOTAL = (PU * CANTIDAD) + ((PU*CAN)*IMPUESTO/100) - DESCUENTO
-        BigDecimal pu = row.getPrecioUnitario();
+        BigDecimal pu = precio.getPrecio();
         BigDecimal cantidad = BigDecimal.valueOf(row.getCantidad());
-        BigDecimal impuesto = BigDecimal.valueOf(t.getPorcentaje()/100.00);
-        BigDecimal descuento = row.getDescuento();
-
-        log.info("PU, CANTIDAD, IMPUESTO: "+ pu.toString() + " " + cantidad.toString() + " " + impuesto.toString());
-
+        BigDecimal impuesto = tipoImpuestoEntity.getPorcentaje().divide(new BigDecimal(100), RoundingMode.HALF_UP);
+        BigDecimal descuento = row.getDescuentoAplicado();
         BigDecimal precioPorCantidad = pu.multiply(cantidad);
-        log.info("Precio por cantidad:" + precioPorCantidad.toString());
-
         BigDecimal totalPartida = (precioPorCantidad.add(precioPorCantidad.multiply(impuesto)));
-        BigDecimal totalConDescuento = totalPartida.subtract(descuento);
-        log.info(String.valueOf(totalConDescuento));
-        return totalConDescuento;
+        return totalPartida.subtract(descuento);
     }
 
+
+    //! LOGICA DE SOLICITUD DE ORDEN DE COMPRA //
     @Override
     @Transactional
     public SolicitudOrdenResponseDTO create(SolicitudOrdenRequestDTO dto) {
 
-        ProveedorEntity queryProveedorEntity = proveedorRepository.findById(dto.getProveedorId())
-                .orElseThrow(() -> new IDNotFound("La id del proveedor no existe"));
-        String folio = generarFolio();
-        OrdenEntity newOrden = OrdenValueMapper.OrdenRequestDTOToEntity(dto, folio, queryProveedorEntity);
-        OrdenEntity createdOrden = this.repository.save(newOrden);
+        ProveedorEntity proveedor = null;
+        if(dto.getProveedorId() != null){
+         proveedor = entityFinderService.findProveedor(dto.getProveedorId());
+        }
+        
+        String folio = folioService.generarFolio(1);
+
+        OrdenEntity ordenEntity = OrdenValueMapper.SolicitudRequestDTOToEntity(dto, folio, proveedor);
+        OrdenEntity createdOrden = this.ordenRepository.save(ordenEntity);
+
+
 
         AtomicReference<BigDecimal> acumuladorTotalOrden = new AtomicReference<>(new BigDecimal("0.0"));
         List<PartidaOrdenEntity> partidas = dto.getPartidas().stream()
+                .filter(row -> {
+                    boolean esValida = row.getIdImpuesto() != null && row.getIdProducto() != null && dto.getProveedorId() != null;
+                    if (!esValida) {
+                        log.info("Se detectó una partida incompleta. Esta no se procesará.");
+                    }
+                    return esValida;
+                })
                 .map(row -> {
-                    // Buscar el tipo de impuesto y el producto
-                    TipoImpuesto t = this.impuestosRepository.findById(row.getIdTipoImpuesto())
-                            .orElseThrow(() -> new IDNotFound("Id no encontrada del impuesto"));
-                    ProductoEntity p = this.productoRepository.findById(row.getIdProducto())
-                            .orElseThrow(() -> new IDNotFound("Id no encontrada del producto"));
+                    // Validacion si existen esos productos...
+
+                    UnidadesMedidaEntity u = null;
+                    if(row.getIdUnidadMedida() != null){
+                        u = unidadesMedidaRepository.findById(row.getIdUnidadMedida()).orElseThrow(() -> new IDNotFound("No se encontro la unidad de medida de una partida"));
+                    }else {
+                        u = unidadesMedidaRepository.findFirstByAlias("Pz");
+                    }
 
 
+                    TipoImpuestoEntity tipoImpuestoQuery = entityFinderService.findTipoImpuesto(row.getIdImpuesto());
+                    ProductoBasicoEntity productoQuery = entityFinderService.findProducto(row.getIdProducto());
 
-                    BigDecimal totalPartida = calcularTotalPartida(row, t);
+                    PresentacionProductoBasico precioQuery = precioRepository.findByProductoBasicoEntity_IdAndProveedorEntity_Id(
+                            productoQuery.getId(), dto.getProveedorId())
+                            .orElseThrow(() -> new IDNotFound("El la presentación del producto cuenta con un error"));
+
+
+                    BigDecimal totalPartida = calcularTotalPartida(row, tipoImpuestoQuery, precioQuery);
+                    //Acumula el total de la partida
                     acumuladorTotalOrden.updateAndGet(currentTotal -> currentTotal.add(totalPartida));
-                    // Crear la partida y asociarla a la orden
-                    return PartidaOrdenValueMapper.PartidaOrdenRequestToEntity(row, createdOrden, t, p);
+                    // Crear la partida y asociarla a la orden  )
+                    PartidaOrdenEntity rowPartida = this.partidaOrdenRepository.save(PartidaOrdenValueMapper.
+                            PartidaOrdenRequestToEntity(row, createdOrden, productoQuery, precioQuery, tipoImpuestoQuery, u));
+                    return rowPartida;
                 })
                 .collect(Collectors.toList()); // Recolectar las partidas en una lista
 
+//        List<PartidaOrdenEntity> partidasGuardadas = (List<PartidaOrdenEntity>) this.partidaOrdenRepository.saveAll(partidas);
+
+        if (proveedor != null) {
         createdOrden.setPartidas(partidas);
+        createdOrden.setGetFechaCreacionSolicitud(LocalDateTime.now());
+        }
         createdOrden.setTotalOrden(acumuladorTotalOrden.get());
 
-        List<PartidaOrdenEntity> partidasGuardadas = (List<PartidaOrdenEntity>) this.partidaOrdenRepository.saveAll(partidas);
-        OrdenEntity orden = repository.save(createdOrden);
+        OrdenEntity orden = ordenRepository.save(createdOrden);
 
-        return OrdenValueMapper.OrdenEntityToResponseDTO(orden, partidasGuardadas);
+        return OrdenValueMapper.OrdenEntityToResponseDTO(orden, partidas);
     }
 
     @Override
     @Transactional
     public SolicitudOrdenResponseDTO update(UUID id, SolicitudOrdenRequestDTO dto) {
         OrdenEntity query = findById(id);
-        ProveedorEntity queryProveedorEntity = proveedorRepository.findById(dto.getProveedorId()).orElseThrow(() -> new IDNotFound("La id del proveedor no existe"));
-        OrdenEntity updatedOrder = OrdenValueMapper.OrdenRequestDTOToEntity(dto, query.getFolio(), queryProveedorEntity);
+        ProveedorEntity proveedor = null;
+        if(dto.getProveedorId() != null){
+            proveedor = entityFinderService.findProveedor(dto.getProveedorId());
+        }
+
+        OrdenEntity updatedOrder = OrdenValueMapper.SolicitudRequestDTOToEntity(dto, query.getFolio(), proveedor);
         updatedOrder.setId(query.getId());
 
         AtomicReference<BigDecimal> acumuladorTotalOrden = new AtomicReference<>(new BigDecimal("0.0"));
         List<PartidaOrdenEntity> partidas = dto.getPartidas().stream()
-                .map((row) -> {
-                    // Buscar el tipo de impuesto y el producto
-                    TipoImpuesto t = this.impuestosRepository.findById(row.getIdTipoImpuesto())
-                            .orElseThrow(() -> new IDNotFound("Id no encontrada del impuesto: " + row.getIdTipoImpuesto()));
-                    ProductoEntity p = this.productoRepository.findById(row.getIdProducto())
-                            .orElseThrow(() -> new IDNotFound("Id no encontrada del producto: " + row.getIdProducto()));
-
-                    BigDecimal totalPartida = calcularTotalPartida(row, t);
-                    acumuladorTotalOrden.updateAndGet(currentTotal -> currentTotal.add(totalPartida));
-                    // Crear la partida y asociarla a la orden
-                    return PartidaOrdenValueMapper.PartidaOrdenRequestToEntity(row, updatedOrder, t, p);
+                .filter(row -> {
+                    boolean esValida = row.getIdImpuesto() != null && row.getIdProducto() != null && dto.getProveedorId() != null;
+                    if (!esValida) {
+                        log.info("Se detectó una partida incompleta. Esta no se procesará.");
+                    }
+                    return esValida;
                 })
-                .collect(Collectors.toList()); // Recolectar las partidas en una lista
+                .map((row) -> {
+                    ProveedorEntity proveedorRow = entityFinderService.findProveedor(dto.getProveedorId());
+                    TipoImpuestoEntity tipoImpuestoQuery = entityFinderService.findTipoImpuesto(row.getIdImpuesto());
+                    ProductoBasicoEntity producto = entityFinderService.findProducto(row.getIdProducto());
+                    //La presentacion es la relaccion - presio producto
+                    PresentacionProductoBasico presentacionProducto = buscarOCrearRelaccion(row, proveedorRow, producto);
+                    BigDecimal totalPartida = calcularTotalPartida(row, tipoImpuestoQuery, presentacionProducto);
+                    acumuladorTotalOrden.updateAndGet(currentTotal -> currentTotal.add(totalPartida));
 
-        updatedOrder.getPartidas().clear();
-        updatedOrder.getPartidas().addAll(partidas);
-        updatedOrder.setTotalOrden(acumuladorTotalOrden.get());
-        updatedOrder.setUpdatedAt(LocalDateTime.now());
+                    UnidadesMedidaEntity u = null;
+                    if(row.getIdUnidadMedida() != null){
+                        u = unidadesMedidaRepository.findById(row.getIdUnidadMedida()).orElseThrow(() -> new IDNotFound("No se encontro el id UUID"));
+                    }else {
+                        u = unidadesMedidaRepository.findFirstByAlias("Pz");
+                    }
 
-        OrdenEntity dbOrden = this.repository.save(updatedOrder);
+                    if(row.getIdPartida() != null){
+                        PartidaOrdenEntity partida = partidaOrdenRepository.findById(row.getIdPartida())
+                                .orElseThrow(() -> new IDNotFound("Una partida proporcionada no se encuentro"));
+                        PartidaOrdenEntity savedPartida = partidaOrdenRepository.save(
+                                PartidaOrdenValueMapper.SavePartidaOrden(partida, updatedOrder, producto, presentacionProducto, tipoImpuestoQuery));
+                        return this.partidaOrdenRepository.save(savedPartida);
+                    }else{
+                        PartidaOrdenEntity createdOrden = PartidaOrdenValueMapper.PartidaOrdenRequestToEntity(row,updatedOrder ,producto, presentacionProducto, tipoImpuestoQuery, u);
+                        return this.partidaOrdenRepository.save(createdOrden);
+                    }
 
+                })
+                .toList(); // Recolectar las partidas en una lista
+
+            updatedOrder.getPartidas().clear();
+            updatedOrder.getPartidas().addAll(partidas);
+            updatedOrder.setTotalOrden(acumuladorTotalOrden.get());
+            updatedOrder.setUpdatedAt(LocalDateTime.now());
+            OrdenEntity dbOrden = this.ordenRepository.save(updatedOrder);
         return OrdenValueMapper.OrdenEntityToResponseDTO(dbOrden, dbOrden.getPartidas());
     }
 
@@ -160,7 +211,7 @@ public class OrdenService implements IOrdenService {
     public SolicitudOrdenResponseDTO delete(UUID id) {
         OrdenEntity query = findById(id);
         query.setDeleted(true);
-        query = repository.save(query);
+        query = ordenRepository.save(query);
         return OrdenValueMapper.OrdenEntityToResponseDTO(query, query.getPartidas());
     }
 
@@ -169,9 +220,93 @@ public class OrdenService implements IOrdenService {
         OrdenEntity query = findById(id);
         return OrdenValueMapper.OrdenEntityToResponseDTO(query, query.getPartidas());
     }
-    public OrdenFacturacionResponseDTO getByIdFactura(UUID id) {
+
+    @Override
+    public List<SolicitudOrdenResponseDTO> getAll(Map<String, String> params) {
+        Sort sort = Sort.by(Sort.Direction.ASC, "folio"); // o el campo que necesites
+        List<OrdenEntity> list = ordenRepository.findAll(filterWithParameters(params), sort);
+        return list.stream().map((x) -> OrdenValueMapper.OrdenEntityToResponseDTO(x, x.getPartidas())).toList();
+    }
+
+    public Specification<OrdenEntity> filterWithParameters(Map<String, String> params) {
+        return new OrdenSpecification().getSpecificationByFilters(params);
+    }
+
+    public SolicitudOrdenResponseDTO cambiarEstado(UUID id, Map<String, SolicitudEstatus> acciones) {
+        OrdenEntity query = this.ordenRepository.findById(id).orElseThrow(() -> new IDNotFound("No se encontró la id de la orden"));
+
+        OrdenEntity finalQuery = query;
+        acciones.forEach((key, value) -> {
+            switch (key) {
+                case "solicitudEstatus":
+                    finalQuery.setSolicitudEstatus(value);
+                    if (value == SolicitudEstatus.COMPLETADA) {
+                        finalQuery.setFacturacionEstado(FacturacionOrdenEstatus.PENDIENTE);
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException("Campo " + key + " no reconocido");
+            }
+        });
+
+        query.setSolicitudEstatus(finalQuery.getSolicitudEstatus());
+        query = ordenRepository.save(query);
+        return OrdenValueMapper.OrdenEntityToResponseDTO(query, query.getPartidas());
+    }
+
+    //! LOGICA DE ORDEN DE COMPRA  //
+    @Transactional
+    public FacturacionOrdenResponseDTO updateFacturacion(FacturacionOrdenRequestDTO dto) {
+
+        OrdenEntity query = findById(dto.getOrderId());
+
+        // Si es null, o Cancelado, o Completado o Facturado no se puede editar
+        if (query.getFacturacionEstado() != FacturacionOrdenEstatus.BORRADOR && query.getFacturacionEstado() != FacturacionOrdenEstatus.PENDIENTE) {
+            throw new IDNotFound("El estado no es valido para editarlo");
+        }
+
+        query.setFacturacionEstado(dto.getFacturacionOrdenEstatus());
+        query.setFolioExterno(dto.getFolioExterno());
+        query.setComentarioFactura(dto.getComentarioFactura());
+
+        if (dto.getFacturacionOrdenEstatus().equals(FacturacionOrdenEstatus.FACTURADO)) {
+            query.setFechaFacturacion(LocalDateTime.now());
+        }
+
+        OrdenEntity dbOrden = this.ordenRepository.save(query);
+
+        return OrdenValueMapper.OrdenFacturacionEntityToResponseDTO(dbOrden);
+    }
+
+    public FacturacionOrdenResponseDTO getByIdFactura(UUID id) {
         OrdenEntity query = findById(id);
         return OrdenValueMapper.OrdenFacturacionEntityToResponseDTO(query);
+    }
+
+    public List<FacturacionOrdenResponseDTO> getAllFacturacion() {
+        Sort sort = Sort.by(Sort.Direction.ASC, "updatedAt"); // o el campo que necesites
+//        List<OrdenEntity> list = ordenRepository.findAll(filterWithParameters(params), sort);
+//        return list.stream().map((x) -> OrdenValueMapper.OrdenEntityToResponseDTO(x, x.getPartidas())).toList();
+
+        List<OrdenEntity> list = ordenRepository.findByFacturacionEstadoNotNull(sort);
+        return list.stream().map(OrdenValueMapper::OrdenFacturacionEntityToResponseDTO).toList();
+    }
+
+    public RecepcionOrdenResponseDTO cambiarARecibo(UUID id, Map<String, FacturacionOrdenEstatus> accion) {
+
+        OrdenEntity query = this.ordenRepository.findById(id).orElseThrow(() -> new IDNotFound("No se encontró la id de la orden"));
+
+        query.setFolioExterno("N/A");
+        query.setRecepcionEstatus(RecepcionEstatus.PENDIENTE);
+        query = ordenRepository.save(query);
+        return OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(query);
+    }
+
+    //! LOGICA DE RECEPCION DE ORDEN DE COMPRA //
+
+    public List<RecepcionOrdenResponseDTO> getAllRecibo() {
+        List<OrdenEntity> list = ordenRepository.findByRecepcionEstatusNotNullOrderByUpdatedAtAsc();
+        return list.stream().map(OrdenValueMapper::OrdenEntityToRecepcionOrdenResponseDTO).toList();
     }
 
     public RecepcionOrdenResponseDTO getByIdRecibo(UUID id) {
@@ -179,135 +314,128 @@ public class OrdenService implements IOrdenService {
         return OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(query);
     }
 
-    @Override
-    public List<SolicitudOrdenResponseDTO> getAll(Map<String, String> params) {
-        List<OrdenEntity> list = repository.findAll(filterWithParameters(params));
-        return list.stream().map((x) -> OrdenValueMapper.OrdenEntityToResponseDTO(x, x.getPartidas())).toList();
-    }
-
-    public List<OrdenFacturacionResponseDTO> getAllFacturacion() {
-        List<OrdenEntity> list = repository.findByPostAutorizadoEstatusNotNull();
-        return list.stream().map(OrdenValueMapper::OrdenFacturacionEntityToResponseDTO).toList();
-    }
-
     @Transactional
-    public OrdenFacturacionResponseDTO updateFacturacion(OrdenFacturacionRequestDTO dto) {
-        OrdenEntity query = findById(dto.getOrderId());
-
-        // Si es null, o Cancelado, o Completado o Facturado no se puede editar
-        if(query.getPostAutorizadoEstatus() != FacturacionOrdenEstatus.BORRADOR && query.getPostAutorizadoEstatus() != FacturacionOrdenEstatus.PENDIENTE){
-            throw new RuntimeException("El estado no es valido para editarlo");
-        }
-
-        // Si fue facturado guarda la hora.
-        if(dto.getFacturacionOrdenEstatus().equals(FacturacionOrdenEstatus.FACTURADO)){
-            query.setFechaFacturacion(LocalDateTime.now());
-        }
-
-        query.setPostAutorizadoEstatus(dto.getFacturacionOrdenEstatus());
-        query.setFolioExterno(dto.getFolioExterno());
-        query.setComentarioFactura(dto.getComentarioFactura());
-
-
-        AtomicReference<BigDecimal> acumuladorTotalOrden = new AtomicReference<>(new BigDecimal("0.0"));
-        List<PartidaOrdenEntity> partidas = dto.getPartidas().stream()
-                .map((row) -> {
-                    // Buscar el tipo de impuesto y el producto
-                    TipoImpuesto t = this.impuestosRepository.findById(row.getIdTipoImpuesto())
-                            .orElseThrow(() -> new IDNotFound("Id no encontrada del impuesto: " + row.getIdTipoImpuesto()));
-                    ProductoEntity p = this.productoRepository.findById(row.getIdProducto())
-                            .orElseThrow(() -> new IDNotFound("Id no encontrada del producto: " + row.getIdProducto()));
-
-                    BigDecimal totalPartida = calcularTotalPartida(row, t);
-                    acumuladorTotalOrden.updateAndGet(currentTotal -> currentTotal.add(totalPartida));
-                    // Crear la partida y asociarla a la orden
-                    return PartidaOrdenValueMapper.PartidaOrdenRequestToEntity(row, query, t, p);
-                })
-                .collect(Collectors.toList()); // Recolectar las partidas en una lista
-
-        query.getPartidas().clear();
-        query.getPartidas().addAll(partidas);
-        query.setTotalOrden(acumuladorTotalOrden.get());
-
-        OrdenEntity dbOrden = this.repository.save(query);
-
-        return OrdenValueMapper.OrdenFacturacionEntityToResponseDTO(dbOrden);
-    }
-
-    public List<RecepcionOrdenResponseDTO> getAllRecibo() {
-        List<OrdenEntity> list = repository.findByRecepcionEstatusNotNull();
-        return list.stream().map((x) -> OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(x)).toList();
-    }
-
-    public RecepcionOrdenResponseDTO cambiarARecibo(UUID id, RecepcionEstatus accion) {
-        OrdenEntity query = findById(id);
-        query.setRecepcionEstatus(accion);
-        query = repository.save(query);
-        return OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(query);
-    }
-
-    @Transactional
-    public RecepcionOrdenResponseDTO updateRecibo(RecepcionOrdenRequestDTO dto) {
+    public RecepcionOrdenResponseDTO pasarARecibo(RecepcionOrdenRequestDTO dto) {
         OrdenEntity query = findById(dto.getIdOrden());
 
-        int[] indice = {0};
-        List<PartidaOrdenEntity> partidas = query.getPartidas().stream()
+        List<PartidaOrdenEntity> partidas = dto.getPartidas().stream()
                 .map((row) -> {
-                    Almacen almacen = almacenRepository.findById(dto.getPartidas().get(indice[0]).getAlmacenId())
-                            .orElseThrow( () -> new RuntimeException("No se encontro la Id de almacen"));
-                    row.setAlmacen(almacen);
-                    row.setComentario(dto.getPartidas().get(indice[0]).getComentario());
 
-                    //TODO Que valide que no superen al numero que se pidio.
+                    PartidaOrdenEntity editableRow = entityFinderService.findByPartida(row.getIdPartida());
+                    if (row.getUnidadesRecibidas() == null) {
+                        throw new IDNotFound("Las unidades recibidas son requeridas");
+                    }
+                    // Validamos que no reciban mas de las que pidieron.
+                    if (row.getUnidadesRecibidas() > editableRow.getCantidad())
+                        throw new IDNotFound("No se puede recibir mas unidades de las solicitadas" + "Unidades solicitadas: "
+                                + editableRow.getCantidad());
 
-                    row.setUnidadesRecibidas(dto.getPartidas().get(indice[0]).getUnidadesRecibidas());
+                    PresentacionProductoBasico queryPresentacion = precioRepository.findById(editableRow.getPrecioRelacion().getId()).orElseThrow(
+                            () -> new IDNotFound("Hubo un problema relaccionado con la busqueda de la presentacion del producto" + editableRow.getPrecioRelacion().getId())
+                    );
 
+                    int recibidasAnteriores = Optional.ofNullable(editableRow.getUnidadesRecibidas()).orElse(0);
+                    int unidadesNuevas = row.getUnidadesRecibidas();
+                    BigDecimal delta = BigDecimal.valueOf(unidadesNuevas - recibidasAnteriores);
 
-                    // Crear la partida y asociarla a la orden
-                    indice[0]++;
-                    return row;
-                })
-                .collect(Collectors.toList()); // Recolectar las partidas en una lista
+                    editableRow.setUnidadesRecibidas(unidadesNuevas);
+                    editableRow.setVerificado(row.isVerificado());
+//                    editableRow.setComentario(row.getComentario());
+                    if (Objects.nonNull(row.getIdAlmacen()) && delta.compareTo(BigDecimal.ZERO) != 0) {
+                        AlmacenEntity queryAlmacen = this.almacenRepository.findById(row.getIdAlmacen()).orElseThrow(
+                                () -> new IDNotFound("No se encontro la ID del almacen"));
+                        log.info("Almacen encontrado: "+queryAlmacen.getNombre());
+                        editableRow.setAlmacen(queryAlmacen);
+                        Optional<InventarioEntity> queryInventario = inventarioRepository.findByAlmacen_IdAndProductoBasicoEntity_Id(
+                                queryAlmacen.getId(),
+                                queryPresentacion.getProductoBasicoEntity().getId());
+
+                        if (queryInventario.isPresent()) {
+                            log.info("Se encontró un inventario existente");
+                            InventarioEntity inventario = queryInventario.get();
+                            BigDecimal cantidadAnterior = inventario.getCantidad() == null ? BigDecimal.ZERO : inventario.getCantidad();
+                            BigDecimal cantidadNueva = cantidadAnterior.add(delta);
+                            if (cantidadNueva.compareTo(BigDecimal.ZERO) < 0) {
+                                throw new IDNotFound("No hay suficiente inventario para ajustar la recepción");
+                            }
+                            inventario.setCantidad(cantidadNueva);
+
+                            log.info("Cambio la cantidad de {} => {}", cantidadAnterior, inventario.getCantidad());
+                            this.inventarioRepository.save(inventario);
+                            if (delta.compareTo(BigDecimal.ZERO) < 0) {
+                                stockMinimoRevisionService.revisarTrasSalida(queryPresentacion.getProductoBasicoEntity().getId());
+                            }
+                        } else if (delta.compareTo(BigDecimal.ZERO) > 0) {
+                            log.info("Se ha creado un nuevo inventario.");
+                            crearNuevoInventario(queryPresentacion, queryAlmacen, delta);
+                        } else {
+                            throw new IDNotFound("No se encontró inventario para revertir unidades recibidas");
+                        }
+                    } else if (Objects.nonNull(row.getIdAlmacen())) {
+                        AlmacenEntity queryAlmacen = this.almacenRepository.findById(row.getIdAlmacen()).orElseThrow(
+                                () -> new IDNotFound("No se encontro la ID del almacen"));
+                        editableRow.setAlmacen(queryAlmacen);
+                    }
+                    return editableRow;
+                }).toList(); // Recolectar las partidas en una lista
+        partidaOrdenRepository.saveAll(partidas);
         query.setComentarioRecibo(dto.getComentarioRecibo());
         query.setFechaRecibo(LocalDateTime.now());
-        return OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(repository.save(query));
+        query.setRecepcionEstatus(dto.getRecepcionEstatus());
 
-
+        return OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(ordenRepository.save(query));
     }
 
-    public Specification<OrdenEntity> filterWithParameters(Map<String, String> params) {
-        return new OrdenSpecification().getSpecificationByFilters(params);
+    private InventarioEntity crearNuevoInventario(PresentacionProductoBasico queryPresentacion, AlmacenEntity almacen, BigDecimal cantidad) {
+
+        ProductoBasicoEntity producto = queryPresentacion.getProductoBasicoEntity();
+        InventarioEntity newInventario = InventarioEntity.builder()
+                .almacen(almacen)
+                .productoBasicoEntity(producto)
+                .cantidad(cantidad)
+                .unidadDeMedida(producto == null ? null : producto.getUnidadMedidaDefault())
+                .build();
+        return this.inventarioRepository.save(newInventario);
+    }
+
+    //! FUNCIONES COMPLEMENTARIAS
+
+    public List<Prioridad> getPriodidades() {
+        return Arrays.stream(Prioridad.values()).toList();
     }
 
     private String generarFolio() {
         try {
-            return jdbcTemplate.queryForObject("SELECT generar_id()", String.class);
+            return jdbcTemplate.queryForObject("SELECT generar_idOrden()", String.class);
         } catch (Exception e) {
             throw new IDNotFound("Hubo un error al generar el folio" + e.getMessage());
         }
 
     }
 
-    public SolicitudOrdenResponseDTO cambiarEstado(UUID id, SolicitanteEstatus accion) {
-        OrdenEntity query = findById(id);
-        switch (accion) {
-            case ORDEN_COMPLETADA -> {
-                query.setPostAutorizadoEstatus(FacturacionOrdenEstatus.PENDIENTE);
-            }
-
-        }
-        query.setSolicitanteEstatus(accion);
-        query = repository.save(query);
-        return OrdenValueMapper.OrdenEntityToResponseDTO(query, query.getPartidas());
-    }
-
     private OrdenEntity findById(UUID id) {
-        return repository.findByIdAndDeletedFalse(id).orElseThrow(() -> new IDNotFound("Error: ID no encontrado"));
+        return ordenRepository.findByIdAndDeletedFalse(id).orElseThrow(() -> new IDNotFound("Error: ID no encontrado"));
     }
 
 
-    public List<Prioridad> getPriodidades() {
-        return Arrays.stream(Prioridad.values()).toList();
+
+    private PresentacionProductoBasico buscarOCrearRelaccion(PartidaOrdenRequestDTO row, ProveedorEntity proveedorRow, ProductoBasicoEntity producto) {
+
+        boolean existe = precioRepository.existsByProductoBasicoEntity_IdAndProveedorEntity_Id(producto.getId(), proveedorRow.getId());
+
+        PresentacionProductoBasico found = null;
+        if(existe) {
+            found = precioRepository.findByProductoBasicoEntity_IdAndProveedorEntity_Id(
+
+                    producto.getId(),proveedorRow.getId()).orElseThrow(() -> new IDNotFound("No encontrado"));
+        } else {
+            log.info("No se encontro una instancia creando...");
+            found = precioRepository.save(PresentacionProductoBasico.builder().proveedorEntity(proveedorRow)
+                    .productoBasicoEntity(producto)
+                    .precio(row.getPrecioUnitario())
+                    .build());
+        }
+        return found;
     }
 }
 

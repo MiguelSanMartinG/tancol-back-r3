@@ -1,6 +1,8 @@
 package com.main.tancol.auth.configs;
 
-import com.main.tancol.auth.repositories.UserRepository;
+//import com.main.tancol.auth.repositories.UserRepository;
+
+import com.main.tancol.empleados.repositories.EmpleadosRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,16 +17,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @Configuration
 public class ApplicationConfiguration {
 
-    private final UserRepository userRepository;
+    private final EmpleadosRepository empleadosRepository;
 
-    public ApplicationConfiguration(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public ApplicationConfiguration(EmpleadosRepository userRepository) {
+        this.empleadosRepository = userRepository;
     }
 
     // Define como recuperar el usuario.
     @Bean
     UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmail(username)
+        return username -> empleadosRepository.findByNombreUsuario(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 

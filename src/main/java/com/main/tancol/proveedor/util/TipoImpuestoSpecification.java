@@ -1,7 +1,7 @@
 package com.main.tancol.proveedor.util;
 
-import com.main.tancol.auth.exceptions.exeption.FilterNotFound;
-import com.main.tancol.proveedor.entity.TipoImpuesto;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
+import com.main.tancol.proveedor.entity.TipoImpuestoEntity;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -12,15 +12,15 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.Map;
 import java.util.UUID;
 
-public class TipoImpuestoSpecification implements Specification<TipoImpuesto> {
+public class TipoImpuestoSpecification implements Specification<TipoImpuestoEntity> {
     @Nullable
     @Override
-    public Predicate toPredicate(Root<TipoImpuesto> root , @Nullable CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder){
+    public Predicate toPredicate(Root<TipoImpuestoEntity> root , @Nullable CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder){
         return null;
     }
 
-    public Specification<TipoImpuesto> getSpecificationByFilters(Map<String,String> params){
-        Specification<TipoImpuesto> specification = Specification.where(this.filterByDeleted("false"));
+    public Specification<TipoImpuestoEntity> getSpecificationByFilters(Map<String,String> params){
+        Specification<TipoImpuestoEntity> specification = Specification.where(this.filterByDeleted("false"));
 
         if (params == null || params.isEmpty()) {
             return specification;
@@ -47,19 +47,19 @@ public class TipoImpuestoSpecification implements Specification<TipoImpuesto> {
         return specification;
     }
 
-    private Specification<TipoImpuesto> filterById(String id){
+    private Specification<TipoImpuestoEntity> filterById(String id){
         return (root,query, cb) -> cb.equal(root.<UUID>get("id"), UUID.fromString(id));
     }
 
-    private Specification<TipoImpuesto> filterByName(String nombre){
+    private Specification<TipoImpuestoEntity> filterByName(String nombre){
         return (root,query, cb) -> cb.like(root.get("nombre"), nombre);
     }
 
-    private Specification<TipoImpuesto> filterByEnabled(String enabled){
+    private Specification<TipoImpuestoEntity> filterByEnabled(String enabled){
         return (root,query, cb) -> cb.equal(root.<Boolean>get("enabled"), Boolean.parseBoolean(enabled));
     }
 
-    private Specification<TipoImpuesto> filterByDeleted(String deleted){
+    private Specification<TipoImpuestoEntity> filterByDeleted(String deleted){
         return (root,query, cb) -> cb.equal(root.<Boolean>get("deleted"), Boolean.parseBoolean(deleted));
     }
 }

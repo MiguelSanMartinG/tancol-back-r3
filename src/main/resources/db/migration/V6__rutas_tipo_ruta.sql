@@ -1,0 +1,2 @@
+ALTER TABLE rutas
+    ADD COLUMN tipo_ruta VARCHAR(50) NOT NULL DEFAULT 'RP';

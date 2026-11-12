@@ -1,14 +1,16 @@
 package com.main.tancol.almacen.service;
 
-import com.main.tancol.common.exeptions.IDNotFound;
-import com.main.tancol.auth.exceptions.exeption.PropiedaDuplicada;
 import com.main.tancol.almacen.dto.request.AlmacenRequestDTO;
 import com.main.tancol.almacen.dto.response.AlmacenResponseDTO;
-import com.main.tancol.almacen.entities.Almacen;
+import com.main.tancol.almacen.entities.AlmacenEntity;
 import com.main.tancol.almacen.repositories.AlmacenRepository;
 import com.main.tancol.almacen.service.interfaces.IAlmacenService;
 import com.main.tancol.almacen.util.AlmacenSpecification;
-import com.main.tancol.almacen.util.ValueMapper;
+import com.main.tancol.common.exceptions.exeption.PropiedaDuplicada;
+import com.main.tancol.common.exeptions.IDNotFound;
+import com.main.tancol.empleados.entities.EmpleadosEntity;
+import com.main.tancol.empleados.helpers.EmpleadoContext;
+import com.main.tancol.empleados.util.DepartamentoMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -30,24 +32,24 @@ public class AlmacenService implements IAlmacenService {
 
     @Override
     public AlmacenResponseDTO createAlmacen(AlmacenRequestDTO almacen) {
-        Optional<Almacen> precondicion = repository.findByNombre(almacen.getNombre());
+        Optional<AlmacenEntity> precondicion = repository.findByNombre(almacen.getNombre());
 
         if (precondicion.isPresent() && !precondicion.get().isDeleted()) {
             throw new PropiedaDuplicada("Ya existe un almacén con ese nombre");
         }
 
-        Almacen newAlmacen = Almacen.builder()
+        AlmacenEntity newAlmacen = AlmacenEntity.builder()
                 .nombre(almacen.getNombre())
                 .build();
 
-        return ValueMapper.EntityToAlmacenResponseDTO(repository.save(newAlmacen));
+        return DepartamentoMapper.EntityToAlmacenResponseDTO(repository.save(newAlmacen));
     }
 
     @Override
     public AlmacenResponseDTO readByID(UUID id) {
-        Optional<Almacen> almacen = repository.findById(id);
+        Optional<AlmacenEntity> almacen = repository.findById(id);
         if(almacen.isPresent() && !almacen.get().isDeleted()) {
-            return ValueMapper.EntityToAlmacenResponseDTO(almacen.get());
+            return DepartamentoMapper.EntityToAlmacenResponseDTO(almacen.get());
         }
         throw new IDNotFound("No se encontro la id proveeida: "+id);
 
@@ -55,37 +57,40 @@ public class AlmacenService implements IAlmacenService {
 
     @Override
     public AlmacenResponseDTO updateAlmacen(UUID id, AlmacenRequestDTO almacen) {
-        log.info("Actualizando Almacén con ID: {}", id);
-        Almacen almacenExistente = repository.findById(id)
+        AlmacenEntity almacenExistente = repository.findById(id)
                 .orElseThrow(() -> new IDNotFound("No se encontró el ID del almacén. ID buscada: " + id));
         // Actualizar solo los campos necesarios
         almacenExistente.setNombre(almacen.getNombre());
         almacenExistente.setEnabled(almacen.getStatus());
-        Almacen almacenActualizado = repository.save(almacenExistente);
-        log.info("Almacén {} actualizado correctamente", almacenActualizado.getId());
-
-        return ValueMapper.EntityToAlmacenResponseDTO(almacenActualizado);
+        AlmacenEntity almacenActualizado = repository.save(almacenExistente);
+        return DepartamentoMapper.EntityToAlmacenResponseDTO(almacenActualizado);
     }
 
     @Override
     public AlmacenResponseDTO deleteAlmacen(UUID id) {
-        Almacen busqueda = repository.findById(id).orElse(null);
+        AlmacenEntity busqueda = repository.findById(id).orElse(null);
         if(busqueda != null) {
             busqueda.setDeleted(true);
-            return ValueMapper.EntityToAlmacenResponseDTO(repository.save(busqueda));
+            return DepartamentoMapper.EntityToAlmacenResponseDTO(repository.save(busqueda));
         }
         throw new IDNotFound("No se encontro el ID del almacen");
     }
 
     @Override
     public List<AlmacenResponseDTO> getAll(Map<String, String> params) {
-        List<Almacen> list = repository.findAll(filterWithParameters(params));
-        log.info(list.toString());
-        List<AlmacenResponseDTO> response = list.stream().map(ValueMapper::EntityToAlmacenResponseDTO).toList();
+        List<AlmacenEntity> list = repository.findAll(filterWithParameters(params));
+        List<AlmacenResponseDTO> response = list.stream().map(DepartamentoMapper::EntityToAlmacenResponseDTO).toList();
+
+        EmpleadosEntity emp = EmpleadoContext.getEmpleadoActual();
+
+        Long idEmpleado = emp.getIdEmpleado();
+        String usuario = emp.getNombreUsuario();
+
+
         return response;
     }
 
-    public Specification<Almacen> filterWithParameters(Map<String, String> params) {
+    public Specification<AlmacenEntity> filterWithParameters(Map<String, String> params) {
         return new AlmacenSpecification().getSpecificationByFilters(params);
     }
 

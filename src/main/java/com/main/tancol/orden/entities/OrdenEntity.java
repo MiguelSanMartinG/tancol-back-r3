@@ -1,15 +1,15 @@
 package com.main.tancol.orden.entities;
 
-import com.main.tancol.almacen.entities.Almacen;
-import com.main.tancol.auth.entities.base.BaseEntity;
+import com.main.tancol.almacen.entities.AlmacenEntity;
+import com.main.tancol.common.entities.base.BaseEntity;
 import com.main.tancol.orden.enums.FacturacionOrdenEstatus;
 import com.main.tancol.orden.enums.Prioridad;
 import com.main.tancol.orden.enums.RecepcionEstatus;
-import com.main.tancol.orden.enums.SolicitanteEstatus;
+import com.main.tancol.orden.enums.SolicitudEstatus;
 import com.main.tancol.proveedor.entity.ProveedorEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -19,14 +19,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Entity
-@Table
-@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Builder
+@Slf4j
+@Table(name = "ordenes")
 public class OrdenEntity extends BaseEntity {
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
@@ -39,10 +42,10 @@ public class OrdenEntity extends BaseEntity {
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "proveedor_id")
-    private ProveedorEntity proveedorEntity;
+    private ProveedorEntity proveedor;
 
     @Column(name = "fecha_solicitud")
-    private LocalDateTime fechaSolicitud;
+    private LocalDateTime getFechaCreacionSolicitud;
 
     @Column(name = "fecha_facturacion")
     private LocalDateTime fechaFacturacion;
@@ -51,23 +54,23 @@ public class OrdenEntity extends BaseEntity {
     private LocalDateTime fechaRecibo;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "prioridad")
     @JdbcTypeCode(SqlTypes.NVARCHAR)
+    @Column(name = "prioridad")
     private Prioridad prioridad;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NVARCHAR)
     @Column(name="solicitante_estado")
-    @JdbcTypeCode(SqlTypes.NVARCHAR)
-    private SolicitanteEstatus solicitanteEstatus;
+    private SolicitudEstatus solicitudEstatus;
 
     @Enumerated(EnumType.STRING)
-    @Column(name="post_autorizado_estado")
     @JdbcTypeCode(SqlTypes.NVARCHAR)
-    private FacturacionOrdenEstatus postAutorizadoEstatus;
+    @Column(name="facturacion_estado")
+    private FacturacionOrdenEstatus facturacionEstado;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NVARCHAR)
     @Column(name="recepcion_estado")
-    @JdbcTypeCode(SqlTypes.NVARCHAR)
     private RecepcionEstatus recepcionEstatus;
 
     @Column(name = "folio_externo")
@@ -82,12 +85,12 @@ public class OrdenEntity extends BaseEntity {
     @Column(name = "total_orden")
     private BigDecimal totalOrden;
 
-    @OneToMany(mappedBy = "solicitudCompraEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "solicitudCompraEntity",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<PartidaOrdenEntity> partidas = new ArrayList<>();
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "almacen_id")
-    private Almacen almacen;
+    private AlmacenEntity almacen;
 
     @Column(name = "usuario_provisional")
     @JdbcTypeCode(SqlTypes.NVARCHAR)

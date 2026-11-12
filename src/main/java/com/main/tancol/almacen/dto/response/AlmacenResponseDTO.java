@@ -1,5 +1,6 @@
 package com.main.tancol.almacen.dto.response;
 
+import com.main.tancol.almacen.entities.AlmacenEntity;
 import lombok.*;
 
 import java.io.Serializable;
@@ -7,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * DTO for {@link com.main.tancol.almacen.entities.Almacen}
+ * DTO for {@link AlmacenEntity}
  */
 @Data
 @AllArgsConstructor

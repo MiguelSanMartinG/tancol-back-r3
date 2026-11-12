@@ -1,12 +1,13 @@
 package com.main.tancol.almacen.dto.request;
 
+import com.main.tancol.almacen.entities.AlmacenEntity;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Value;
 
 import java.io.Serializable;
 
 /**
- * DTO for {@link com.main.tancol.almacen.entities.Almacen}
+ * DTO for {@link AlmacenEntity}
  */
 @Value
 public class AlmacenRequestDTO implements Serializable {

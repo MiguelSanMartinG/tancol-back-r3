@@ -39,7 +39,7 @@ public class ProveedorController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProveedorResponseDTO> update(@RequestParam @PathVariable UUID id, @Valid @RequestBody ProveedorRequestDTO dto) {
+    public ResponseEntity<ProveedorResponseDTO> update(@PathVariable UUID id, @Valid @RequestBody ProveedorRequestDTO dto) {
         return ResponseEntity.ok(service.update(id,dto));
     }
 

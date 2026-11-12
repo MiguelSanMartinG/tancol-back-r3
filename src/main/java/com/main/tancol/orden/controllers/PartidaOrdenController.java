@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/PartidaCompra")
+@RequestMapping("/partida-orden")
 @Hidden
 @Tag(name = "PartidadeOrden")
 public class PartidaOrdenController {

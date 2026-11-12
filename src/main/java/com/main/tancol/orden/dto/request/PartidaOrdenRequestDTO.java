@@ -1,17 +1,21 @@
 package com.main.tancol.orden.dto.request;
 
-import lombok.*;
+import jakarta.validation.constraints.Positive;
+import lombok.Value;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Value
 public class PartidaOrdenRequestDTO {
-
+    // Factura - Solicitud
+    UUID idPartida;
     UUID idProducto;
-    UUID idTipoImpuesto;
+    UUID idImpuesto;
+    @Positive
     Integer cantidad;
     BigDecimal precioUnitario;
-    BigDecimal descuento;
+    BigDecimal descuentoAplicado;
+    UUID idUnidadMedida;
 
 }

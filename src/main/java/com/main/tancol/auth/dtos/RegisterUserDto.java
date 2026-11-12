@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
@@ -21,22 +22,22 @@ public class RegisterUserDto {
 //            message = "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial"
 //    )
     private String password;
-    @NotEmpty
-    private String firstName;
+//    @NotEmpty
+//    private String firstName;
 
 
-    public RegisterUserDto setFirstName(String firstName) {
-        this.firstName = firstName;
-        return this;
-    }
-
-    public RegisterUserDto setPassword(String password) {
-        this.password = password;
-        return this;
-    }
-
-    public RegisterUserDto setUsername(String username) {
-        this.username = username;
-        return this;
-    }
+//    public RegisterUserDto setFirstName(String firstName) {
+//        this.firstName = firstName;
+//        return this;
+//    }
+//
+//    public RegisterUserDto setPassword(String password) {
+//        this.password = password;
+//        return this;
+//    }
+//
+//    public RegisterUserDto setUsername(String username) {
+//        this.username = username;
+//        return this;
+//    }
 }

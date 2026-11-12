@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-@RequestMapping("/tipoImpuesto")
+@RequestMapping("/tipo-impuesto")
 @RestController
 @Tag(name = "\uD83D\uDCB8 Tipo Impuesto")
 public class TipoImpuestoController {
@@ -43,7 +43,7 @@ public class TipoImpuestoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TipoImpuestoResponseDTO> update(@RequestParam @PathVariable UUID id, @Valid @RequestBody TipoImpuestoRequestDTO dto) {
+    public ResponseEntity<TipoImpuestoResponseDTO> update(@PathVariable UUID id, @Valid @RequestBody TipoImpuestoRequestDTO dto) {
         return ResponseEntity.ok(service.update(id,dto));
     }
 

@@ -3,3 +3,8 @@
 /target/
 /logs/
 /dev_Dockerfile
+/Auth.iml
+/uploads/
+/src/main/resources/src/main/java/com/main/tancol/logistica/
+/src/main/resources/application-test.properties
+/pom.xml

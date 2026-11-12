@@ -2,83 +2,100 @@ package com.main.tancol.orden.util;
 
 
 import com.main.tancol.orden.dto.request.SolicitudOrdenRequestDTO;
-import com.main.tancol.orden.dto.response.OrdenFacturacionResponseDTO;
+import com.main.tancol.orden.dto.response.FacturacionOrdenResponseDTO;
 import com.main.tancol.orden.dto.response.RecepcionOrdenResponseDTO;
 import com.main.tancol.orden.dto.response.SolicitudOrdenResponseDTO;
 import com.main.tancol.orden.entities.OrdenEntity;
 import com.main.tancol.orden.entities.PartidaOrdenEntity;
 import com.main.tancol.proveedor.entity.ProveedorEntity;
+import com.main.tancol.proveedor.util.ProveedorValueMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class OrdenValueMapper {
 
-        public static OrdenEntity OrdenRequestDTOToEntity(SolicitudOrdenRequestDTO dto, String folio, ProveedorEntity proveedorEntity) {
+    public static OrdenEntity SolicitudRequestDTOToEntity(SolicitudOrdenRequestDTO dto, String folio, ProveedorEntity proveedorEntity) {
         return OrdenEntity.builder()
-                .fechaSolicitud(dto.getFechaSolicitud())
-                .titulo(dto.getTitulo())
-                .proveedorEntity(proveedorEntity)
-                .folio(folio)
-                .solicitanteEstatus(dto.getSolicitanteEstatus())
+                .titulo(Optional.ofNullable(dto.getTitulo()).orElse(null))
+                .folio(Optional.ofNullable(folio).orElse(null))
                 .prioridad(dto.getPrioridad())
+                .proveedor(Optional.ofNullable(proveedorEntity).orElse(null))
+                .solicitudEstatus(dto.getSolicitudEstatus())
                 .partidas(new ArrayList<>())
                 .build();
-
     }
 
     public static SolicitudOrdenResponseDTO OrdenEntityToResponseDTO(OrdenEntity dto, List<PartidaOrdenEntity> listaDePartidasEntity){
+
         return  SolicitudOrdenResponseDTO.builder()
-                .id(dto.getId())
-                .folio(dto.getFolio())
-                .fechaSolicitud(dto.getFechaSolicitud())
-                .fechaUltimaModificacion((dto.getUpdatedAt() == null) ? dto.getCreatedAt() : dto.getUpdatedAt())
-                .solicitanteEstatus(dto.getSolicitanteEstatus())
-                .prioridad(dto.getPrioridad())
+                .idSolicitud(dto.getId())
                 .titulo(dto.getTitulo())
-                .partidas(listaDePartidasEntity.stream().map(PartidaOrdenValueMapper::PartidasOrdenEntityToResponseDTO).collect(Collectors.toList()))
+                .folio(dto.getFolio())
                 .totalOrden(dto.getTotalOrden())
+                .fechaCreacionSolicitud(dto.getGetFechaCreacionSolicitud())
+                .fechaModificacionSolicitud((dto.getUpdatedAt() == null) ? dto.getCreatedAt() : dto.getUpdatedAt())
+                .solicitudEstatus(dto.getSolicitudEstatus())
+                .prioridad(dto.getPrioridad())
+                .createdAt(dto.getCreatedAt())
+                .updatedAt(dto.getUpdatedAt())
+                .proveedor(dto.getProveedor() == null ? null : ProveedorValueMapper.ProveedorEntityToResponse(dto.getProveedor()))
+                .partidas(listaDePartidasEntity.isEmpty()? new ArrayList<>() :
+                        listaDePartidasEntity.stream().map(PartidaOrdenValueMapper::PartidasOrdenEntityToResponseDTO).collect(Collectors.toList()))
                 .build();
     }
 
 
-    public static OrdenFacturacionResponseDTO OrdenFacturacionEntityToResponseDTO(OrdenEntity dto){
-        return OrdenFacturacionResponseDTO.builder()
-                .id(dto.getId())
-                .folioOrden(dto.getFolio())
-                .proveedorId(dto.getProveedorEntity().getId())
-                .proveedorNombre(dto.getProveedorEntity().getNombre())
-                .proveedorRazonSocial(dto.getProveedorEntity().getRazonSocial())
-                .estatusFactura(dto.getPostAutorizadoEstatus())
-                .folioExterno(dto.getFolioExterno())
-                .fechaFacturacion(dto.getFechaFacturacion())
-                .updatedAt(dto.getUpdatedAt())
-                .fechaSolicitud(dto.getFechaSolicitud())
+    public static FacturacionOrdenResponseDTO OrdenFacturacionEntityToResponseDTO(OrdenEntity dto){
+        return  FacturacionOrdenResponseDTO.builder()
+                .idSolicitud(dto.getId())
+                .titulo(dto.getTitulo())
+                .folio(dto.getFolio())
                 .totalOrden(dto.getTotalOrden())
-                .comentarioFactura(dto.getComentarioFactura())
+                .fechaCreacionSolicitud(dto.getGetFechaCreacionSolicitud())
+                .fechaModificacionSolicitud((dto.getUpdatedAt() == null) ? dto.getCreatedAt() : dto.getUpdatedAt())
+                .solicitudEstatus(dto.getSolicitudEstatus())
+                .prioridad(dto.getPrioridad())
+                .createdAt(dto.getCreatedAt())
+                .updatedAt(dto.getUpdatedAt())
+                .proveedor(ProveedorValueMapper.ProveedorEntityToResponse(dto.getProveedor()))
                 .partidas(dto.getPartidas().stream().map(PartidaOrdenValueMapper::PartidasOrdenEntityToResponseDTO).collect(Collectors.toList()))
+                .fechaFacturacion(dto.getFechaFacturacion())
+                .folioExterno(dto.getFolioExterno())
+                .estatusFactura(dto.getFacturacionEstado())
+                .comentarioFactura(dto.getComentarioFactura())
                 .build();
     }
 
     public static RecepcionOrdenResponseDTO OrdenEntityToRecepcionOrdenResponseDTO(OrdenEntity dto){
 
             return RecepcionOrdenResponseDTO.builder()
-                    .id(dto.getId())
-                    .folio(dto.getFolio())
-                    .fechaSolicitud(dto.getFechaSolicitud())
-                    .recepcionEstatus(dto.getRecepcionEstatus())
-                    .prioridad(dto.getPrioridad())
                     .fechaRecibo(dto.getFechaRecibo())
-                    .usuario("Usuario 1")
-                    .proveedor(com.main.tancol.proveedor.util.ValueMapper.ProveedorEntityToResponse(dto.getProveedorEntity()))
+//                    .comentarioRecibo(dto.getComentarioRecibo())
                     .recepcionEstatus(dto.getRecepcionEstatus())
-                    .updatedAt(dto.getUpdatedAt())
+                    .usuario(dto.getUsuario())
+                    .idSolicitud(dto.getId())
+                    .titulo(dto.getTitulo())
+                    .folio(dto.getFolio())
+                    .totalOrden(dto.getTotalOrden())
+                    .fechaCreacionSolicitud(dto.getGetFechaCreacionSolicitud())
+                    .fechaModificacionSolicitud((dto.getUpdatedAt() == null) ? dto.getCreatedAt() : dto.getUpdatedAt())
+                    .solicitudEstatus(dto.getSolicitudEstatus())
+                    .prioridad(dto.getPrioridad())
                     .createdAt(dto.getCreatedAt())
+                    .updatedAt(dto.getUpdatedAt())
+                    .proveedor(ProveedorValueMapper.ProveedorEntityToResponse(dto.getProveedor()))
                     .partidas(dto.getPartidas().stream().map(PartidaOrdenValueMapper::PartidasOrdenEntityToResponseDTO).collect(Collectors.toList()))
+                    .fechaFacturacion(dto.getFechaFacturacion())
+                    .folioExterno(dto.getFolioExterno())
+                    .estatusFactura(dto.getFacturacionEstado())
+                    .comentarioFactura(dto.getComentarioFactura())
                     .build();
 
     }
+
 
 
 }

@@ -1,5 +1,7 @@
 package com.main.tancol.producto.dto.response;
 
+import com.main.tancol.producto.dto.response.insumos.ProductoResponseDTO;
+import com.main.tancol.producto.entities.PresentacionProductoBasico;
 import com.main.tancol.proveedor.dto.response.ProveedorResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * DTO for {@link com.main.tancol.producto.entities.PrecioEntity}
+ * DTO for {@link PresentacionProductoBasico}
  */
 @AllArgsConstructor
 @Getter

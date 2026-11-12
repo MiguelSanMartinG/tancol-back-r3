@@ -1,5 +1,6 @@
 package com.main.tancol.orden.dto.request;
 
+import com.main.tancol.orden.enums.RecepcionEstatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,18 +14,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @Getter
 public class RecepcionOrdenRequestDTO implements Serializable {
-    private final UUID idOrden;
-    private final String comentarioRecibo;
-    private final List<PartidaOrdenEntityDTO> partidas;
+    private UUID idOrden;
+    private String comentarioRecibo;
+    private List<RecepcionPartidaOrdenRequestDTO> partidas;
+    private RecepcionEstatus recepcionEstatus;
 
-    /**
-     * DTO for {@link com.main.tancol.orden.entities.PartidaOrdenEntity}
-     */
-    @AllArgsConstructor
-    @Getter
-    public static class PartidaOrdenEntityDTO implements Serializable {
-        private final Integer unidadesRecibidas;
-        private final String comentario;
-        private final UUID almacenId;
-    }
 }
