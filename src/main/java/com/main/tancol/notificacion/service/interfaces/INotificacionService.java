@@ -31,6 +31,11 @@ public interface INotificacionService {
                          String mensaje,
                          UUID productoId);
 
+    int crearOrdenRecepcion(List<EmpleadosEntity> destinatarios,
+                            String titulo,
+                            String mensaje,
+                            UUID excluirEmpleadoId);
+
     List<NotificacionResponseDTO> listarDelEmpleadoActual();
 
     NotificacionResponseDTO marcarLeida(UUID id);

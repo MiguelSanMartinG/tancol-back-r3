@@ -8,7 +8,12 @@ import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.AlmacenRepository;
 import com.main.tancol.almacen.repositories.InventarioRepository;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
+import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
+import com.main.tancol.empleados.entities.EmpleadosEntity;
+import com.main.tancol.empleados.helpers.EmpleadoContext;
+import com.main.tancol.notificacion.enums.TipoNotificacion;
+import com.main.tancol.notificacion.service.NotificacionService;
 import com.main.tancol.common.service.FolioService;
 import com.main.tancol.orden.dto.request.FacturacionOrdenRequestDTO;
 import com.main.tancol.orden.dto.request.PartidaOrdenRequestDTO;
@@ -38,6 +43,7 @@ import com.main.tancol.proveedor.entity.ProveedorEntity;
 import com.main.tancol.proveedor.entity.TipoImpuestoEntity;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -66,6 +72,7 @@ public class OrdenService implements IOrdenService {
     private final FolioService folioService;
     private final UnidadesMedidaRepository unidadesMedidaRepository;
     private final StockMinimoRevisionService stockMinimoRevisionService;
+    private final NotificacionService notificacionService;
 
 
     private BigDecimal calcularTotalPartida(
@@ -361,10 +368,41 @@ public class OrdenService implements IOrdenService {
 
         OrdenEntity query = this.ordenRepository.findById(id).orElseThrow(() -> new IDNotFound("No se encontró la id de la orden"));
 
+        // Reenviarla reiniciaría su recepción a PENDIENTE; solo se permite si nunca se envió o se canceló.
+        RecepcionEstatus actual = query.getRecepcionEstatus();
+        if (actual != null && actual != RecepcionEstatus.CANCELADA) {
+            throw new GenericExeption("La orden " + query.getFolio() + " ya está en Recepción de compra");
+        }
+
         query.setFolioExterno("N/A");
         query.setRecepcionEstatus(RecepcionEstatus.PENDIENTE);
         query = ordenRepository.save(query);
+        notificarEnvioARecepcion(query);
         return OrdenValueMapper.OrdenEntityToRecepcionOrdenResponseDTO(query);
+    }
+
+    /** Un fallo al notificar no debe revertir el envío a recepción: solo se registra en el log. */
+    private void notificarEnvioARecepcion(OrdenEntity orden) {
+        try {
+            List<EmpleadosEntity> destinatarios = notificacionService.destinatariosRecepcionOrden();
+            if (destinatarios.isEmpty()) {
+                log.info("Orden {} enviada a recepción; ningún rol tiene asignado el tipo {}",
+                        orden.getFolio(), TipoNotificacion.ORDEN_ENVIADA_RECEPCION);
+                return;
+            }
+            String proveedor = orden.getProveedor() != null ? orden.getProveedor().getNombreComercial() : null;
+            String mensaje = "La orden de compra " + orden.getFolio()
+                    + (StringUtils.isNotBlank(proveedor) ? " de " + proveedor : "")
+                    + " está lista para recibirse en Recepción de compra.";
+            EmpleadosEntity actual = EmpleadoContext.getEmpleadoActual();
+            notificacionService.crearOrdenRecepcion(
+                    destinatarios,
+                    "Orden " + orden.getFolio() + " enviada a recepción",
+                    mensaje,
+                    actual != null ? actual.getId() : null);
+        } catch (RuntimeException ex) {
+            log.error("No se pudo notificar el envío a recepción de la orden {}", orden.getFolio(), ex);
+        }
     }
 
     //! LOGICA DE RECEPCION DE ORDEN DE COMPRA //

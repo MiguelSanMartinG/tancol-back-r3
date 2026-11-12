@@ -81,6 +81,40 @@ public class NotificacionService implements INotificacionService {
         return destinatariosDe(TipoNotificacion.BOTELLON_ROTO_SOBRE_TOLERANCIA);
     }
 
+    public List<EmpleadosEntity> destinatariosRecepcionOrden() {
+        return destinatariosDe(TipoNotificacion.ORDEN_ENVIADA_RECEPCION);
+    }
+
+    /**
+     * Avisa que una orden de compra pasó a Recepción de compra.
+     * No se avisa a quien hizo la acción: esa persona ya ve la confirmación en pantalla.
+     */
+    @Override
+    @Transactional
+    public int crearOrdenRecepcion(List<EmpleadosEntity> destinatarios,
+                                   String titulo,
+                                   String mensaje,
+                                   UUID excluirEmpleadoId) {
+        if (destinatarios == null || destinatarios.isEmpty()) {
+            return 0;
+        }
+        int creadas = 0;
+        for (EmpleadosEntity empleado : destinatarios) {
+            if (excluirEmpleadoId != null && excluirEmpleadoId.equals(empleado.getId())) {
+                continue;
+            }
+            repository.save(NotificacionEntity.builder()
+                    .titulo(titulo)
+                    .mensaje(mensaje)
+                    .tipo(TipoNotificacion.ORDEN_ENVIADA_RECEPCION)
+                    .leida(false)
+                    .empleado(empleado)
+                    .build());
+            creadas++;
+        }
+        return creadas;
+    }
+
     @Transactional(readOnly = true)
     public List<NotificacionTipoResponseDTO> listarTipos() {
         return tipoRepository.findAllByDeletedFalseOrderByNombreAsc().stream()
