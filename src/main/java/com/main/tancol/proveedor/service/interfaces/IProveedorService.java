@@ -1,5 +1,6 @@
 package com.main.tancol.proveedor.service.interfaces;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.proveedor.dto.request.ProveedorRequestDTO;
 import com.main.tancol.proveedor.dto.response.ProveedorResponseDTO;
 
@@ -11,6 +12,8 @@ public interface IProveedorService {
     ProveedorResponseDTO create(ProveedorRequestDTO dto);
 
     List<ProveedorResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<ProveedorResponseDTO> getPage(Map<String, String> params);
 
     ProveedorResponseDTO getById(UUID id);
 
