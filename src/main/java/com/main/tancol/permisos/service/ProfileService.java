@@ -12,6 +12,7 @@ import com.main.tancol.permisos.util.ProfileValueMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.domain.Specification;
 import com.main.tancol.permisos.entities.ProfileEntity;
 import com.main.tancol.permisos.util.ProfileSpecification;
@@ -65,6 +66,7 @@ public class ProfileService implements IProfileService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ProfileResponseDTO> getAll(Map<String, String> params) {
         List<ProfileEntity> list = repository.findAll(filterWithParameters(params));
         return list.stream().map(ProfileValueMapper::ProfileEntityToResponse).toList();
