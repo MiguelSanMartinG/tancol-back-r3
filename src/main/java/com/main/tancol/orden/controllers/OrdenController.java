@@ -1,5 +1,6 @@
 package com.main.tancol.orden.controllers;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.orden.dto.request.FacturacionOrdenRequestDTO;
 import com.main.tancol.orden.dto.request.RecepcionOrdenRequestDTO;
 import com.main.tancol.orden.dto.request.SolicitudOrdenRequestDTO;
@@ -56,6 +57,11 @@ public class OrdenController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @GetMapping("/solicitud/page")
+    public ResponseEntity<PageResponse<SolicitudOrdenResponseDTO>> pageSolicitud(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPageSolicitud(params));
+    }
+
     @GetMapping("/solicitud/{id}")
     public ResponseEntity<SolicitudOrdenResponseDTO> getByIdSolicitud(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getById(id));
@@ -70,6 +76,11 @@ public class OrdenController {
     @GetMapping("/facturacion")
     public ResponseEntity<List<FacturacionOrdenResponseDTO>> getAllFacturacion() {
         return ResponseEntity.ok(service.getAllFacturacion());
+    }
+
+    @GetMapping("/facturacion/page")
+    public ResponseEntity<PageResponse<FacturacionOrdenResponseDTO>> pageFacturacion(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPageFacturacion(params));
     }
 
     @GetMapping("/facturacion/{id}")
@@ -108,6 +119,11 @@ public class OrdenController {
     @GetMapping("/recibo")
     public ResponseEntity<List<RecepcionOrdenResponseDTO>> getAllRecibo() {
         return ResponseEntity.ok(service.getAllRecibo());
+    }
+
+    @GetMapping("/recibo/page")
+    public ResponseEntity<PageResponse<RecepcionOrdenResponseDTO>> pageRecibo(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPageRecibo(params));
     }
 
     @GetMapping("/recibo/{id}")

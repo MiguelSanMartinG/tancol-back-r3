@@ -1,5 +1,6 @@
 package com.main.tancol.empleados.controllers;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.empleados.dto.request.DepartamentoRequestDTO;
 import com.main.tancol.empleados.dto.response.DepartamentoResponseDTO;
 import com.main.tancol.empleados.service.DepartamentoService;
@@ -32,6 +33,11 @@ public class DepartamentoController {
     public ResponseEntity<List<DepartamentoResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<DepartamentoResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<DepartamentoResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

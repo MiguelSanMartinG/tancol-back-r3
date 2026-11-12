@@ -3,6 +3,7 @@ package com.main.tancol.cliente.service.interfaces;
 import com.main.tancol.cliente.dto.request.ClienteRequestDTO;
 import com.main.tancol.cliente.dto.response.ClienteNombreHistorialResponseDTO;
 import com.main.tancol.cliente.dto.response.ClienteResponseDTO;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 
 import java.util.*;
@@ -14,6 +15,8 @@ public interface IClienteService {
     void crearDesdeEmpleado(EmpleadosEntity empleado);
 
     List<ClienteResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<ClienteResponseDTO> getPage(Map<String, String> params);
 
     ClienteResponseDTO getById(UUID id);
 

@@ -2,6 +2,8 @@ package com.main.tancol.producto.service.insumo;
 
 import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exceptions.exeption.PropiedaDuplicada;
 import com.main.tancol.common.exeptions.IDNotFound;
@@ -13,12 +15,14 @@ import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
 import com.main.tancol.producto.repositories.CategoriaProductoRepository;
 import com.main.tancol.producto.repositories.ProductoRepository;
 import com.main.tancol.producto.service.interfaces.IProductoService;
+import com.main.tancol.producto.util.insumos.ProductoPageSpecification;
 import com.main.tancol.producto.util.insumos.ProductoSpecification;
 import com.main.tancol.producto.util.insumos.ProductoValueMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +31,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -64,6 +69,28 @@ public class ProductoService implements IProductoService {
     public List<ProductoResponseDTO> getAll(Map<String, String> params) {
         List<ProductoBasicoEntity> list = repository.findAll(filterWithParameters(params));
         return list.stream().map(ProductoValueMapper::ProductEntityToResponseDTO).toList();
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of("sku", "nombre", "alias", "enabled", "createdAt", "updatedAt");
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "sku", "sku",
+            "nombre", "nombre",
+            "alias", "alias",
+            "enabled", "enabled",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<ProductoResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        var result = repository.findAll(
+                new ProductoPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, Sort.by(Sort.Direction.DESC, "createdAt"), "id"))
+        );
+        var items = result.getContent().stream().map(ProductoValueMapper::ProductEntityToResponseDTO).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.main.tancol.prestamo.service.interfaces;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.prestamo.dto.request.EquipoRequestDTO;
 import com.main.tancol.prestamo.dto.response.EquipoResponseDTO;
 
@@ -12,6 +13,8 @@ public interface IEquipoService {
     EquipoResponseDTO create(EquipoRequestDTO dto);
 
     List<EquipoResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<EquipoResponseDTO> getPage(Map<String, String> params);
 
     EquipoResponseDTO getById(UUID id);
 

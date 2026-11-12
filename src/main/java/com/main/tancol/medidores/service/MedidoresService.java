@@ -2,6 +2,8 @@ package com.main.tancol.medidores.service;
 
 import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.medidores.dto.request.BitacoraMedicionRequestDTO;
 import com.main.tancol.medidores.dto.request.MedidoresRequestDTO;
@@ -12,10 +14,12 @@ import com.main.tancol.medidores.repositories.MedidoresRepository;
 import com.main.tancol.medidores.repositories.SistemasDeAlmacenamientoRepository;
 import com.main.tancol.medidores.service.interfaces.IMedidoresService;
 import com.main.tancol.medidores.util.MedidorEstadoContext;
+import com.main.tancol.medidores.util.MedidoresPageSpecification;
 import com.main.tancol.medidores.util.MedidoresSpecification;
 import com.main.tancol.medidores.util.MedidoresValueMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -195,6 +199,33 @@ public class MedidoresService implements IMedidoresService {
         return list.stream()
                 .map(m -> MedidoresValueMapper.MedidoresEntityToResponse(m, estado))
                 .toList();
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "nombre", "alias", "tipoAgua", "ultimaMedicion", "fechaUltimaMedicion", "createdAt", "updatedAt"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "nombre", "nombre",
+            "alias", "alias",
+            "tipoAgua", "tipoAgua",
+            "ultimaMedicion", "medicion",
+            "fechaUltimaMedicion", "fechaUltimaMedicion",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt"
+    );
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<MedidoresResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        var result = repository.findAll(
+                new MedidoresPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, Sort.by(Sort.Direction.DESC, "createdAt"), "idMedidor"))
+        );
+        var items = result.getContent().stream()
+                .map(m -> MedidoresValueMapper.MedidoresEntityToResponse(m, MedidorEstadoContext.VACIO))
+                .toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     public Specification<MedidoresEntity> filterWithParameters(Map<String, String> params) {

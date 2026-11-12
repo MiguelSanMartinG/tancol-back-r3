@@ -1,5 +1,6 @@
 package com.main.tancol.producto.controller.comercial;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.producto.dto.request.comercial.ProductoComercialRequestDTO;
 import com.main.tancol.producto.dto.response.comercial.ProductoComercialResponseDTO;
 import com.main.tancol.producto.service.comercial.ProductoComercialService;
@@ -34,6 +35,11 @@ public class ProductoComercialController {
     public ResponseEntity<List<ProductoComercialResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<ProductoComercialResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<ProductoComercialResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

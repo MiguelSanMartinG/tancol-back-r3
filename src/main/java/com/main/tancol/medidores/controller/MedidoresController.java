@@ -1,5 +1,6 @@
 package com.main.tancol.medidores.controller;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.medidores.dto.request.MedidoresRelacionRequestDTO;
 import com.main.tancol.medidores.dto.request.MedidoresRequestDTO;
 import com.main.tancol.medidores.dto.request.ResetMedidorRequestDTO;
@@ -42,6 +43,11 @@ public class MedidoresController {
     public ResponseEntity<List<MedidoresResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<MedidoresResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<MedidoresResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

@@ -1,5 +1,6 @@
 package com.main.tancol.prestamo.controllers;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.prestamo.dto.request.EquipoRequestDTO;
 import com.main.tancol.prestamo.dto.response.EquipoResponseDTO;
 import com.main.tancol.prestamo.service.EquipoService;
@@ -32,6 +33,11 @@ public class EquipoController {
     @GetMapping
     public ResponseEntity<List<EquipoResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         return ResponseEntity.ok(service.getAll(params));
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<EquipoResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")
