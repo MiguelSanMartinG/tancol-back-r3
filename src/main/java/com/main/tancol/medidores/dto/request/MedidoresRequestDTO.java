@@ -18,4 +18,6 @@ public class MedidoresRequestDTO {
     TiposAgua tipoAgua;
     BigDecimal medicionInicial;
     List<UUID> medidoresHijo;
+    /** Consumo diario en litros a partir del cual se avisa al capturar la lectura. Null = sin alerta. */
+    BigDecimal alertaConsumoLitros;
 }

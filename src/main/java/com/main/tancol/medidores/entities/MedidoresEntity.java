@@ -61,6 +61,10 @@ public class MedidoresEntity extends BaseEntity {
     @Column(name = "alias")
     private String alias;
 
+    /** Consumo diario en litros a partir del cual se avisa al capturar la lectura. Null = sin alerta. */
+    @Column(name = "alerta_consumo_litros", precision = 19, scale = 2)
+    private BigDecimal alertaConsumoLitros;
+
     @Column(name = "fecha_ultima_medicion")
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     private LocalDateTime fechaUltimaMedicion;

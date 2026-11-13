@@ -20,6 +20,7 @@ public class MedidoresResponseDTO {
     private UUID idMedidor;
     private TiposAgua tipoAgua;
     private BigDecimal ultimaMedicion;
+    private BigDecimal alertaConsumoLitros;
     private LocalDateTime fechaUltimaMedicion;
     private List<SistemasDeAlmacenamientoResponseDTO> sistemasDeAlmacenamiento;
     private UnidadesMedidaResponseDTO unidadMedida;

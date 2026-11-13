@@ -27,6 +27,7 @@ public class MedidoresValueMapper {
                 .alias(dto.getAlias())
                 .tipoAgua(dto.getTipoAgua())
                 .medicion(dto.getMedicionInicial())
+                .alertaConsumoLitros(dto.getAlertaConsumoLitros())
                 .sistemasDeAlmacenamiento(sistemas)
                 .unidadadMedidaDefault(unidadesMedida)
                 .build();
@@ -69,6 +70,7 @@ public class MedidoresValueMapper {
                 .updatedAt(dto.getUpdatedAt())
                 .deleted(dto.isDeleted())
                 .ultimaMedicion(dto.getMedicion())
+                .alertaConsumoLitros(dto.getAlertaConsumoLitros())
                 .medidoresHijos(ObjectUtils.isNotEmpty(dto.getMedidoresHijos())
                         ? dto.getMedidoresHijos().stream().map(h -> MedidoresEntityToResponseSimple(h, estado)).toList()
                         : null)

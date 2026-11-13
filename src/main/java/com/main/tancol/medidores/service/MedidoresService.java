@@ -4,6 +4,7 @@ import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
 import com.main.tancol.common.dto.CatalogPage;
 import com.main.tancol.common.dto.PageResponse;
+import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.medidores.dto.request.BitacoraMedicionRequestDTO;
 import com.main.tancol.medidores.dto.request.MedidoresRequestDTO;
@@ -57,6 +58,7 @@ public class MedidoresService implements IMedidoresService {
         List<UUID> idsSistemas = dto.getIdsSistemasAlmacenamiento() != null ? dto.getIdsSistemasAlmacenamiento() : List.of();
         Set<SistemasDeAlmacenamientoEntity> sistemas = resolveSistemasDeAlmacenamiento(idsSistemas);
         UnidadesMedidaEntity u = unidadesMedidaRepository.findById(dto.getUnidadMedicion()).orElseThrow(() -> new IDNotFound("No se encontro la uuid de unidad de medicion"));
+        validarAlertaConsumo(dto.getAlertaConsumoLitros());
 
         MedidoresEntity medidor = MedidoresValueMapper.MedidoresRequestToEntity(dto, u, sistemas);
         return enriquecerRespuesta(this.repository.save(medidor));
@@ -131,8 +133,17 @@ public class MedidoresService implements IMedidoresService {
         }
         medidor.setUnidadadMedidaDefault(u);
         medidor.setTipoAgua(dto.getTipoAgua());
+        validarAlertaConsumo(dto.getAlertaConsumoLitros());
+        medidor.setAlertaConsumoLitros(dto.getAlertaConsumoLitros());
         return enriquecerRespuesta(repository.save(medidor));
 
+    }
+
+    /** La alerta es opcional (null = sin alerta); si viene, no puede ser negativa. */
+    private void validarAlertaConsumo(BigDecimal alertaConsumoLitros) {
+        if (alertaConsumoLitros != null && alertaConsumoLitros.signum() < 0) {
+            throw new GenericExeption("La alerta de consumo diario no puede ser negativa");
+        }
     }
 
     @Transactional
