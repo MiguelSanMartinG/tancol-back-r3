@@ -1,5 +1,10 @@
 package com.main.tancol.medidores.service;
 
+import com.main.tancol.medidores.dto.request.ResetMedidorRequestDTO;
+import com.main.tancol.medidores.entities.BitacoraMedicionEntity;
+import com.main.tancol.medidores.repositories.BitacoraMedicionRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
 import com.main.tancol.common.dto.CatalogPage;
@@ -38,6 +43,9 @@ public class MedidoresService implements IMedidoresService {
     private final UnidadesMedidaRepository unidadesMedidaRepository;
     private final BitacoraMedicionService bitacoraMedicionService;
     private final MedidorEstadoService medidorEstadoService;
+    private final BitacoraMedicionRepository bitacoraMedicionRepository;
+
+    static final java.time.ZoneId ZONA_MEXICO = java.time.ZoneId.of("America/Mexico_City");
 
 
     private Set<SistemasDeAlmacenamientoEntity> resolveSistemasDeAlmacenamiento(List<UUID> ids) {
@@ -102,18 +110,109 @@ public class MedidoresService implements IMedidoresService {
         }
     }
 
-    public void resetMedidor(UUID id, String comentario){
-        try {
-            MedidoresEntity medidor = this.repository.findById(id).orElseThrow( () -> new IDNotFound("No se encontro la id del medidor"));
-            medidor.resetearMedidor();
-            BitacoraMedicionRequestDTO rq = new BitacoraMedicionRequestDTO(medidor.getIdMedidor(), new BigDecimal(0), comentario, null, null, null);
-            this.bitacoraMedicionService.create(rq);
-            this.repository.save(medidor);
-        }catch (Exception e){
-            throw new RuntimeException(e);
+    /**
+     * Reinicio de un medidor físico: se cierra con su última lectura real y lo reemplaza otro
+     * medidor ya dado de alta, que toma su lugar en el árbol (padre e hijos) y su alerta de consumo
+     * si no tiene una. El medidor reemplazado ya no recibe lecturas.
+     */
+    @Transactional
+    public void resetMedidor(ResetMedidorRequestDTO dto) {
+        MedidoresEntity anterior = this.repository.findById(dto.getIdMedidor())
+                .filter(m -> !m.isDeleted())
+                .orElseThrow(() -> new IDNotFound("No se encontró el medidor a reiniciar"));
+        MedidoresEntity nuevo = this.repository.findById(dto.getIdMedidorReemplazo())
+                .filter(m -> !m.isDeleted())
+                .orElseThrow(() -> new IDNotFound("No se encontró el medidor de reemplazo"));
+        validarReemplazo(anterior, nuevo, dto.getMedicionAnterior());
+
+        String comentario = "Cierre por reemplazo: lo reemplaza " + etiqueta(nuevo) + "."
+                + (dto.getMensaje() != null && !dto.getMensaje().isBlank() ? " " + dto.getMensaje().trim() : "");
+        registrarLecturaDeCierre(anterior, dto.getMedicionAnterior(), comentario);
+
+        MedidoresEntity padre = anterior.getMedidorPadre();
+        if (padre != null) {
+            padre.getMedidoresHijos().remove(anterior);
+            anterior.setMedidorPadre(null);
+            nuevo.setMedidorPadre(padre);
+            padre.getMedidoresHijos().add(nuevo);
         }
+        List<MedidoresEntity> hijos = new ArrayList<>(anterior.getMedidoresHijos());
+        for (MedidoresEntity hijo : hijos) {
+            hijo.setMedidorPadre(nuevo);
+            nuevo.getMedidoresHijos().add(hijo);
+        }
+        anterior.getMedidoresHijos().clear();
 
+        if (nuevo.getAlertaConsumoLitros() == null) {
+            nuevo.setAlertaConsumoLitros(anterior.getAlertaConsumoLitros());
+        }
+        LocalDateTime ahora = LocalDateTime.now(ZONA_MEXICO);
+        anterior.setMedidorReemplazadoPor(nuevo);
+        anterior.setFechaReemplazo(ahora);
+        nuevo.setReemplazaA(anterior);
+        nuevo.setFechaReemplazo(ahora);
 
+        this.repository.save(nuevo);
+        hijos.forEach(this.repository::save);
+        this.repository.save(anterior);
+    }
+
+    static void validarReemplazo(MedidoresEntity anterior, MedidoresEntity nuevo, BigDecimal medicionAnterior) {
+        if (anterior.getIdMedidor().equals(nuevo.getIdMedidor())) {
+            throw new GenericExeption("El medidor de reemplazo debe ser otro medidor.");
+        }
+        if (anterior.getMedidorReemplazadoPor() != null) {
+            throw new GenericExeption("El medidor " + etiqueta(anterior) + " ya fue reemplazado por "
+                    + etiqueta(anterior.getMedidorReemplazadoPor()) + ".");
+        }
+        if (!nuevo.isEnabled() || nuevo.getMedidorReemplazadoPor() != null) {
+            throw new GenericExeption("El medidor " + etiqueta(nuevo) + " no está activo o ya fue reemplazado.");
+        }
+        if (nuevo.getMedidorPadre() != null || (nuevo.getMedidoresHijos() != null && !nuevo.getMedidoresHijos().isEmpty())) {
+            throw new GenericExeption("El medidor " + etiqueta(nuevo)
+                    + " ya está en el árbol de medidores; elige un medidor sin padre ni hijos.");
+        }
+        if (medicionAnterior == null || medicionAnterior.signum() < 0) {
+            throw new GenericExeption("La medición anterior es obligatoria.");
+        }
+        BigDecimal ultima = anterior.getMedicion();
+        if (ultima != null && medicionAnterior.compareTo(ultima) < 0) {
+            throw new GenericExeption("La medición anterior no puede ser menor que la última lectura del medidor ("
+                    + ultima.multiply(BigDecimal.valueOf(1000)).stripTrailingZeros().toPlainString() + " LTS).");
+        }
+    }
+
+    /**
+     * Lectura con la que se cierra el medidor reemplazado. Si ya tenía lectura hoy, se corrige esa
+     * (para no contar dos veces el consumo del día); si no, se registra una nueva.
+     */
+    private void registrarLecturaDeCierre(MedidoresEntity anterior, BigDecimal medicionAnterior, String comentario) {
+        Optional<BitacoraMedicionEntity> ultima = bitacoraMedicionRepository
+                .findTopByMedidor_IdMedidorAndCreatedAtBeforeOrderByCreatedAtDesc(
+                        anterior.getIdMedidor(), LocalDateTime.now().plusDays(1));
+        boolean hayLecturaHoy = ultima
+                .map(b -> b.getCreatedAt() != null && b.getCreatedAt().toLocalDate().equals(LocalDate.now()))
+                .orElse(false);
+        if (hayLecturaHoy) {
+            BitacoraMedicionEntity hoy = ultima.get();
+            BigDecimal base = hoy.getConsumo() != null && hoy.getMedidaActual() != null
+                    ? hoy.getMedidaActual().subtract(hoy.getConsumo())
+                    : hoy.getMedidaInicial();
+            hoy.setMedidaActual(medicionAnterior);
+            hoy.setConsumo(medicionAnterior.subtract(base));
+            hoy.setComentario(comentario);
+            bitacoraMedicionRepository.save(hoy);
+            anterior.setMedicion(medicionAnterior);
+            anterior.setFechaUltimaMedicion(LocalDateTime.now());
+        } else {
+            bitacoraMedicionService.create(new BitacoraMedicionRequestDTO(
+                    anterior.getIdMedidor(), medicionAnterior, comentario, null, null, null));
+            anterior.setMedicion(medicionAnterior);
+        }
+    }
+
+    static String etiqueta(MedidoresEntity m) {
+        return m.getAlias() != null && !m.getAlias().isBlank() ? m.getNombre() + " (" + m.getAlias() + ")" : m.getNombre();
     }
 
     @Override

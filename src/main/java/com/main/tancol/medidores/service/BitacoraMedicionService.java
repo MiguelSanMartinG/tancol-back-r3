@@ -1,5 +1,6 @@
 package com.main.tancol.medidores.service;
 
+import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.helpers.EmpleadoContext;
@@ -43,6 +44,11 @@ public class BitacoraMedicionService implements IBitacoraMedicionService {
     @Transactional
     public BitacoraMedicionResponseDTO create(BitacoraMedicionRequestDTO dto) {
         MedidoresEntity medidor = medidoresRepository.findById(dto.getIdMedidor()).orElseThrow(() -> new IDNotFound("Medidor no encontrado"));
+        if (medidor.getMedidorReemplazadoPor() != null) {
+            MedidoresEntity nuevo = medidor.getMedidorReemplazadoPor();
+            throw new GenericExeption("El medidor fue reemplazado por " + nuevo.getNombre()
+                    + "; captura la lectura en " + nuevo.getNombre() + ".");
+        }
 
         EmpleadosEntity emp = EmpleadoContext.getEmpleadoActual();
 

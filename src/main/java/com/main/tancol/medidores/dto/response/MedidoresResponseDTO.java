@@ -21,6 +21,9 @@ public class MedidoresResponseDTO {
     private TiposAgua tipoAgua;
     private BigDecimal ultimaMedicion;
     private BigDecimal alertaConsumoLitros;
+    private MedidorRefDTO reemplazadoPor;
+    private MedidorRefDTO reemplazaA;
+    private LocalDateTime fechaReemplazo;
     private LocalDateTime fechaUltimaMedicion;
     private List<SistemasDeAlmacenamientoResponseDTO> sistemasDeAlmacenamiento;
     private UnidadesMedidaResponseDTO unidadMedida;
