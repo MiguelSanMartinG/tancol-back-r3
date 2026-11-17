@@ -28,4 +28,6 @@ public class OrdenInternaRequestDTO {
     @NotEmpty(message = "Debe incluir al menos una partida")
     @Valid
     List<PartidaOrdenInternaRequestDTO> partidas;
+    /** Opcional: nombre del archivo de la firma de quien recibe (respuesta de POST /upload). */
+    String idImagenFirmaRecibe;
 }

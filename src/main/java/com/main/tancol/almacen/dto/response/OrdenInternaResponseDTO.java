@@ -25,4 +25,6 @@ public class OrdenInternaResponseDTO {
     private List<PartidaOrdenInternaResponseDTO> partidas;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String idImagenFirmaRecibe;
+    private LocalDateTime fechaFirmaRecibe;
 }

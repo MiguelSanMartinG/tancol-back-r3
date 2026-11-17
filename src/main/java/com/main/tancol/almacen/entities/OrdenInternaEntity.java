@@ -56,6 +56,11 @@ public class OrdenInternaEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private EstadoOrdenInterna estadoOrdenInterna;
 
+    @Column(name = "id_imagen_firma_recibe")
+    private String idImagenFirmaRecibe;
+
+    @Column(name = "fecha_firma_recibe")
+    private LocalDateTime fechaFirmaRecibe;
 
 
 }

@@ -1,5 +1,6 @@
 package com.main.tancol.almacen.controller;
 
+import com.main.tancol.almacen.dto.request.FirmaRecibeOrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.request.OrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.response.OrdenInternaResponseDTO;
 import com.main.tancol.almacen.service.OrdenInternaService;
@@ -42,6 +43,12 @@ public class OrdenInternaController {
     @PutMapping("/{id}")
     public ResponseEntity<OrdenInternaResponseDTO> update(@PathVariable UUID id, @RequestBody OrdenInternaRequestDTO dto) {
         return ResponseEntity.ok(service.update(id,dto));
+    }
+
+    @PatchMapping("/{id}/firma-recibe")
+    public ResponseEntity<OrdenInternaResponseDTO> firmarRecibe(@PathVariable UUID id,
+                                                                @Valid @RequestBody FirmaRecibeOrdenInternaRequestDTO dto) {
+        return ResponseEntity.ok(service.firmarRecibe(id, dto));
     }
 
     @DeleteMapping("/{id}")

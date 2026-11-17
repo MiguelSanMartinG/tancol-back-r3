@@ -16,11 +16,19 @@ import com.main.tancol.almacen.util.OrdenInternaSpecification;
 import com.main.tancol.almacen.service.interfaces.IOrdenInternaService;
 import com.main.tancol.common.service.FolioService;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import com.main.tancol.almacen.dto.request.FirmaRecibeOrdenInternaRequestDTO;
+import com.main.tancol.common.exceptions.exeption.GenericExeption;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
 public class OrdenInternaService implements IOrdenInternaService {
+
+    private static final ZoneId ZONA_MEXICO = ZoneId.of("America/Mexico_City");
 
     private final OrdenInternaRepository repository;
     private final EmpleadosRepository empleadoRepository;
@@ -49,6 +57,9 @@ public class OrdenInternaService implements IOrdenInternaService {
 
         OrdenInternaEntity ordenInterna = OrdenInternaValueMapper.OrdenInternaRequestToEntity(dto,emisor,receptor);
         ordenInterna.setFolio(folioService.generarFolio(3));
+        if (dto.getIdImagenFirmaRecibe() != null && !dto.getIdImagenFirmaRecibe().isBlank()) {
+            asignarFirmaRecibe(ordenInterna, dto.getIdImagenFirmaRecibe());
+        }
         ordenInterna = this.repository.save(ordenInterna);
 
         ordenInterna.setPartidas(this.partidaOrdenInternaService.createListPartida(dto.getPartidas(), ordenInterna));
@@ -62,6 +73,24 @@ public class OrdenInternaService implements IOrdenInternaService {
     public OrdenInternaResponseDTO getById(UUID id) {
         return OrdenInternaValueMapper.OrdenInternaEntityToResponse(
                 this.repository.findById(id).orElseThrow(()-> new IDNotFound("No se encontro la orden.")));
+    }
+
+    @Override
+    @Transactional
+    public OrdenInternaResponseDTO firmarRecibe(UUID id, FirmaRecibeOrdenInternaRequestDTO dto) {
+        OrdenInternaEntity ordenInterna = this.repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro la orden."));
+        if (ordenInterna.getIdImagenFirmaRecibe() != null && !ordenInterna.getIdImagenFirmaRecibe().isBlank()) {
+            throw new GenericExeption("La salida de material ya tiene la firma de quien recibe.");
+        }
+        asignarFirmaRecibe(ordenInterna, dto.getIdImagenFirmaRecibe());
+        return OrdenInternaValueMapper.OrdenInternaEntityToResponse(this.repository.save(ordenInterna));
+    }
+
+    /** La fecha/hora de la firma siempre la pone el servidor (hora de México). */
+    private void asignarFirmaRecibe(OrdenInternaEntity ordenInterna, String idImagenFirmaRecibe) {
+        ordenInterna.setIdImagenFirmaRecibe(idImagenFirmaRecibe.trim());
+        ordenInterna.setFechaFirmaRecibe(LocalDateTime.now(ZONA_MEXICO));
     }
 
     @Override
