@@ -1,5 +1,7 @@
 package com.main.tancol.empleados.dto.response;
 
+import com.main.tancol.empleados.enums.TipoContratacion;
+import java.time.LocalDate;
 import com.main.tancol.permisos.dto.response.RoleResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,5 +28,13 @@ public class EmpleadosResponseDTO {
     private String nombreUsuario;
     private DepartamentoSimpleResponseDTO departamento;
     private TiposEmpleadosSimpleResponseDTO tipoEmpleado;
+    private String nss;
+    private String rfc;
+    private String curp;
+    private LocalDate fechaIngreso;
+    private LocalDate fechaEgreso;
+    private String observaciones;
+    private TipoContratacion tipoContratacion;
+    private LocalDate fechaVigencia;
     // Agrega m??s campos aqu??
 }

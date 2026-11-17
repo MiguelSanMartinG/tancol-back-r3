@@ -57,6 +57,7 @@ public class EmpleadosService implements IEmpleadosService {
         entity.setIdEmpleado(Integer.toUnsignedLong(getNextIdExterno()));
         entity.setContra(passwordEncoder.encode(dto.getPassword()));
         entity.setEnabled(true);
+        EmpleadoDatosLaborales.aplicar(entity, dto);
 
         RoleEntity rol;
         if(dto.getIdRol() != null){
@@ -103,6 +104,7 @@ public class EmpleadosService implements IEmpleadosService {
         oldEmpleado.setEnabled(dto.isEnabled());
         oldEmpleado.setRole(rol);
         oldEmpleado.setCorreo(dto.getCorreo());
+        EmpleadoDatosLaborales.aplicar(oldEmpleado, dto);
         if(dto.getPassword() != null){
         oldEmpleado.setContra(passwordEncoder.encode(dto.getPassword()));
         }

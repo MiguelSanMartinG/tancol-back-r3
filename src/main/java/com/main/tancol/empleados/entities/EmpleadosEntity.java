@@ -1,5 +1,7 @@
 package com.main.tancol.empleados.entities;
 
+import com.main.tancol.empleados.enums.TipoContratacion;
+import java.time.LocalDate;
 import com.main.tancol.common.entities.base.BaseEntity;
 import com.main.tancol.logistica.entities.bitacora.comisiones.VentasEmpleadoEntity;
 import com.main.tancol.logistica.entities.rutas.RutasEntity;
@@ -67,6 +69,31 @@ public class EmpleadosEntity extends BaseEntity implements UserDetails {
     @Column(name = "fecha_nacimiento")
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     private LocalDateTime fechaNacimiento;
+
+    @Column(name = "nss", length = 11)
+    private String nss;
+
+    @Column(name = "rfc", length = 13)
+    private String rfc;
+
+    @Column(name = "curp", length = 18)
+    private String curp;
+
+    @Column(name = "fecha_ingreso")
+    private LocalDate fechaIngreso;
+
+    @Column(name = "fecha_egreso")
+    private LocalDate fechaEgreso;
+
+    @Column(name = "observaciones", length = 1000)
+    private String observaciones;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_contratacion", length = 20)
+    private TipoContratacion tipoContratacion;
+
+    @Column(name = "fecha_vigencia")
+    private LocalDate fechaVigencia;
 
     @Column(name = "contra")
     @JdbcTypeCode(SqlTypes.VARCHAR)
