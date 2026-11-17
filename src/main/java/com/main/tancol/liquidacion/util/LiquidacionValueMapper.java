@@ -1,14 +1,18 @@
 package com.main.tancol.liquidacion.util;
 
 
+import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.liquidacion.dto.request.LiquidacionRequestDTO;
+import com.main.tancol.liquidacion.dto.response.LiquidacionListResponseDTO;
 import com.main.tancol.liquidacion.dto.response.LiquidacionResponseDTO;
 import com.main.tancol.liquidacion.entities.LiquidacionEntity;
+import com.main.tancol.logistica.entities.rutas.RutasEntity;
 import com.main.tancol.liquidacion.enums.EstadosLiquidacion;
 import com.main.tancol.liquidacion.util.totalizados.LiquidacionTotalizadoValueMapper;
 import com.main.tancol.logistica.util.ruta.RutasValueMapper;
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.stream.Collectors;
@@ -49,6 +53,33 @@ public class LiquidacionValueMapper {
                 .usuarioCancelacion(dto.getUsuarioCancelacion())
                 .fechaCancelacion(dto.getFechaCancelacion())
                 .build();
+    }
+
+    /** Fila ligera de la tabla; no toca partidas ni totalizados (vienen agregados por consulta). */
+    public static LiquidacionListResponseDTO LiquidacionEntityToListResponse(LiquidacionEntity entity,
+                                                                            long numeroPartidas,
+                                                                            BigDecimal totalEstimado) {
+        RutasEntity ruta = entity.getRuta();
+        EmpleadosEntity chofer = ruta != null ? ruta.getChofer() : null;
+        return new LiquidacionListResponseDTO(
+                entity.getIdLiquidacion(),
+                entity.getFolio(),
+                entity.getFecha(),
+                ruta != null ? new LiquidacionListResponseDTO.RutaResumen(ruta.getId(), ruta.getNombre(), ruta.getNumero()) : null,
+                chofer != null ? new LiquidacionListResponseDTO.ChoferResumen(
+                        chofer.getId(),
+                        chofer.getNombre(),
+                        chofer.getPrimerApellido(),
+                        chofer.getSegundoApellido(),
+                        chofer.getNombreUsuario()) : null,
+                entity.getBloqueNota(),
+                numeroPartidas,
+                totalEstimado != null ? totalEstimado : BigDecimal.ZERO,
+                entity.getEstadosLiquidacion(),
+                entity.isOrigenBitacora(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
     }
 
 

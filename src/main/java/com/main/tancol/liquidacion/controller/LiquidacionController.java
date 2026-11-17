@@ -1,6 +1,8 @@
 package com.main.tancol.liquidacion.controller;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.liquidacion.dto.request.CancelacionLiquidacionRequestDTO;
+import com.main.tancol.liquidacion.dto.response.LiquidacionListResponseDTO;
 import com.main.tancol.liquidacion.dto.request.CancelacionPartidaRequestDTO;
 import com.main.tancol.liquidacion.dto.request.LiquidacionRequestDTO;
 import com.main.tancol.liquidacion.dto.response.LiquidacionResponseDTO;
@@ -39,6 +41,17 @@ public class LiquidacionController {
     public ResponseEntity<List<LiquidacionResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<LiquidacionResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    /**
+     * Lista paginada para la tabla. Filtros (filter_*): fecha, folio, bloqueNota, estatus, partidas, totalEstimado,
+     * createdAt, updatedAt, ruta, rutaIds, chofer, choferIds, ayudante, ayudanteIds, vehiculo, vehiculoIds.
+     * Orden (sort_*=ASC|DESC): fecha, folio, createdAt, updatedAt, estatus, bloqueNota, ruta, chofer, partidas,
+     * totalEstimado. Por defecto fecha DESC, createdAt DESC.
+     */
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<LiquidacionListResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

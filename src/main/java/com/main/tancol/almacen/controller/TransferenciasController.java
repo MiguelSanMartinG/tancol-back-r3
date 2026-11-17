@@ -5,6 +5,7 @@ import com.main.tancol.almacen.dto.response.partidas.PartidaTransferenciaRespons
 import com.main.tancol.almacen.dto.response.TransferenciasResponseDTO;
 import com.main.tancol.almacen.service.PartidaTransferenciaService;
 import com.main.tancol.almacen.service.TransferenciasService;
+import com.main.tancol.common.dto.PageResponse;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +38,11 @@ public class TransferenciasController {
     public ResponseEntity<List<TransferenciasResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<TransferenciasResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<TransferenciasResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

@@ -3,7 +3,9 @@ package com.main.tancol.liquidacion.repositories;
 import com.main.tancol.liquidacion.entities.LiquidacionEntity;
 import com.main.tancol.liquidacion.enums.EstadosLiquidacion;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -32,4 +34,15 @@ public interface LiquidacionRepository extends CrudRepository<LiquidacionEntity,
 
     List<LiquidacionEntity> findByFechaBetweenAndRuta_Id(
             LocalDateTime fechaInicio, LocalDateTime fechaFin, UUID rutaId);
+
+    /**
+     * Resumen de partidas para una pagina de liquidaciones: [idLiquidacion, numeroPartidas, totalEstimado].
+     * Una sola consulta agrupada en lugar de cargar las partidas de cada fila.
+     */
+    @Query("select p.liquidacionOrigen.idLiquidacion, count(p), " +
+            "sum(coalesce(p.precio, 0) * coalesce(p.cantidad, 0)) " +
+            "from LiquidacionPartidaEntity p " +
+            "where p.liquidacionOrigen.idLiquidacion in :ids " +
+            "group by p.liquidacionOrigen.idLiquidacion")
+    List<Object[]> resumenPartidas(@Param("ids") Collection<UUID> ids);
 }

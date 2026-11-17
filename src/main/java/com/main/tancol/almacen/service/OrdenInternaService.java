@@ -4,7 +4,10 @@ import com.main.tancol.almacen.dto.request.OrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.request.partidas.PartidaOrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.response.OrdenInternaResponseDTO;
 import com.main.tancol.almacen.repositories.OrdenInternaRepository;
+import com.main.tancol.almacen.util.OrdenInternaPageSpecification;
 import com.main.tancol.almacen.util.OrdenInternaValueMapper;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.repositories.EmpleadosRepository;
@@ -112,6 +115,32 @@ public class OrdenInternaService implements IOrdenInternaService {
 
     public Specification<OrdenInternaEntity> filterWithParameters(Map<String, String> params) {
         return new OrdenInternaSpecification().getSpecificationByFilters(params);
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "folio", "emisor", "receptor", "createdAt", "fechaElaboracion", "estado"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "folio", "folio",
+            "emisor", "empleadoEnvia.nombre",
+            "receptor", "empleadoRecibe.nombre",
+            "createdAt", "createdAt",
+            "fechaElaboracion", "fechaElaboracion",
+            "estado", "estadoOrdenInterna"
+    );
+
+    /** GET /orden-interna/page (Salida de material). Orden por defecto: fecha de elaboracion DESC. */
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrdenInternaResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        Sort fallback = Sort.by(Sort.Order.desc("fechaElaboracion"), Sort.Order.desc("createdAt"));
+        var result = repository.findAll(
+                new OrdenInternaPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, fallback, "idOrdenInterna"))
+        );
+        var items = result.getContent().stream().map(OrdenInternaValueMapper::OrdenInternaEntityToResponse).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
 }

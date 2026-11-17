@@ -4,6 +4,9 @@ import com.main.tancol.almacen.entities.AlmacenEntity;
 import com.main.tancol.almacen.entities.InventarioEntity;
 import com.main.tancol.almacen.repositories.AlmacenRepository;
 import com.main.tancol.almacen.repositories.InventarioRepository;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.*;
@@ -11,6 +14,7 @@ import com.main.tancol.cuadreinventario.entities.CuadreInventarioEntity;
 import com.main.tancol.cuadreinventario.entities.CuadreInventarioPartidaEntity;
 import com.main.tancol.cuadreinventario.enums.EstadoCuadre;
 import com.main.tancol.cuadreinventario.repositories.CuadreInventarioRepository;
+import com.main.tancol.cuadreinventario.util.CuadreInventarioPageSpecification;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.helpers.EmpleadoContext;
 import com.main.tancol.producto.service.insumo.StockMinimoRevisionService;
@@ -68,6 +72,58 @@ public class CuadreInventarioService {
         return repository.findAll(spec, Sort.by(Sort.Direction.DESC, "fechaCreacion")).stream()
                 .map(c -> toResponse(c, false))
                 .toList();
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "folio", "almacen", "estado", "creadoPor", "fecha", "fechaCreacion", "cerradoPor", "fechaCierre",
+            "ajusteAplicado", "ajuste", "partidasConDiferencia"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.ofEntries(
+            Map.entry("folio", "folio"),
+            Map.entry("almacen", "almacen.nombre"),
+            Map.entry("estado", "estado"),
+            Map.entry("creadoPor", "creadoPor.nombre"),
+            Map.entry("fecha", "fechaCreacion"),
+            Map.entry("fechaCreacion", "fechaCreacion"),
+            Map.entry("cerradoPor", "cerradoPor.nombre"),
+            Map.entry("fechaCierre", "fechaCierre"),
+            Map.entry("ajusteAplicado", "ajusteAplicado"),
+            Map.entry("ajuste", "ajusteAplicado")
+    );
+    private static final Set<String> PAGE_SORT_KEYS;
+
+    static {
+        Set<String> keys = new HashSet<>(PAGE_SORTS.keySet());
+        keys.add("partidasConDiferencia");
+        PAGE_SORT_KEYS = Set.copyOf(keys);
+    }
+
+    /** GET /cuadre-inventario/page. Orden por defecto: fechaCreacion DESC. Excluye cancelados (deleted). */
+    @Transactional(readOnly = true)
+    public PageResponse<Response> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORT_KEYS);
+
+        CuadreInventarioPageSpecification.OrdenCalculado ordenCalculado = null;
+        Sort.Direction direccionCalculada = null;
+        Sort sort;
+        if ("partidasConDiferencia".equals(query.sortKey())) {
+            String direction = query.sortDirection() == null ? "" : query.sortDirection().trim();
+            if (!direction.equals("ASC") && !direction.equals("DESC")) {
+                throw new FilterNotFound("Invalid filter: sort_" + query.sortKey());
+            }
+            ordenCalculado = CuadreInventarioPageSpecification.OrdenCalculado.PARTIDAS_CON_DIFERENCIA;
+            direccionCalculada = Sort.Direction.valueOf(direction);
+            sort = Sort.unsorted();
+        } else {
+            sort = query.sort(PAGE_SORTS, Sort.by(Sort.Direction.DESC, "fechaCreacion"), "id");
+        }
+
+        var result = repository.findAll(
+                new CuadreInventarioPageSpecification(query.search(), query.filters(), ordenCalculado, direccionCalculada),
+                query.pageable(sort)
+        );
+        var items = result.getContent().stream().map(c -> toResponse(c, false)).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     @Transactional(readOnly = true)

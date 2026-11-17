@@ -1,6 +1,8 @@
 package com.main.tancol.liquidacion.service.interfaces;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.liquidacion.dto.request.CancelacionLiquidacionRequestDTO;
+import com.main.tancol.liquidacion.dto.response.LiquidacionListResponseDTO;
 import com.main.tancol.liquidacion.dto.request.CancelacionPartidaRequestDTO;
 import com.main.tancol.liquidacion.dto.request.LiquidacionRequestDTO;
 import com.main.tancol.liquidacion.dto.response.LiquidacionResponseDTO;
@@ -14,6 +16,8 @@ public interface ILiquidacionService {
     LiquidacionResponseDTO create(LiquidacionRequestDTO dto);
 
     List<LiquidacionResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<LiquidacionListResponseDTO> getPage(Map<String, String> params);
 
     LiquidacionResponseDTO getById(UUID id);
 

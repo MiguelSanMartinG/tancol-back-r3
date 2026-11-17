@@ -3,6 +3,7 @@ package com.main.tancol.almacen.service.interfaces;
 import com.main.tancol.almacen.dto.request.FirmaRecibeOrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.request.OrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.response.OrdenInternaResponseDTO;
+import com.main.tancol.common.dto.PageResponse;
 
 import java.util.*;
 
@@ -11,6 +12,8 @@ public interface IOrdenInternaService {
     OrdenInternaResponseDTO create(OrdenInternaRequestDTO dto);
 
     List<OrdenInternaResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<OrdenInternaResponseDTO> getPage(Map<String, String> params);
 
     OrdenInternaResponseDTO getById(UUID id);
 

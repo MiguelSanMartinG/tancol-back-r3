@@ -1,5 +1,6 @@
 package com.main.tancol.cuadreinventario.controllers;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CapturaRequest;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CerrarRequest;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CrearRequest;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -30,6 +32,11 @@ public class CuadreInventarioController {
     public ResponseEntity<List<Response>> listar(@RequestParam(required = false) UUID idAlmacen,
                                                  @RequestParam(required = false) EstadoCuadre estado) {
         return ResponseEntity.ok(service.listar(idAlmacen, estado));
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<Response>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

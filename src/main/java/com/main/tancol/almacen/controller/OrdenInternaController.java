@@ -4,6 +4,7 @@ import com.main.tancol.almacen.dto.request.FirmaRecibeOrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.request.OrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.response.OrdenInternaResponseDTO;
 import com.main.tancol.almacen.service.OrdenInternaService;
+import com.main.tancol.common.dto.PageResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.*;
@@ -33,6 +34,11 @@ public class OrdenInternaController {
     public ResponseEntity<List<OrdenInternaResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<OrdenInternaResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<OrdenInternaResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

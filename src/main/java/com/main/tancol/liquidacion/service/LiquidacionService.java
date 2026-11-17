@@ -1,5 +1,8 @@
 package com.main.tancol.liquidacion.service;
 
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.common.service.FolioService;
@@ -8,6 +11,7 @@ import com.main.tancol.empleados.helpers.EmpleadoContext;
 import com.main.tancol.liquidacion.dto.request.CancelacionLiquidacionRequestDTO;
 import com.main.tancol.liquidacion.dto.request.CancelacionPartidaRequestDTO;
 import com.main.tancol.liquidacion.dto.request.LiquidacionRequestDTO;
+import com.main.tancol.liquidacion.dto.response.LiquidacionListResponseDTO;
 import com.main.tancol.liquidacion.dto.response.LiquidacionResponseDTO;
 import com.main.tancol.liquidacion.dto.response.NotaDTO;
 import com.main.tancol.liquidacion.entities.LiquidacionEntity;
@@ -16,6 +20,7 @@ import com.main.tancol.liquidacion.enums.EstadosLiquidacion;
 import com.main.tancol.liquidacion.repositories.LiquidacionPartidaRepository;
 import com.main.tancol.liquidacion.repositories.LiquidacionRepository;
 import com.main.tancol.liquidacion.service.interfaces.ILiquidacionService;
+import com.main.tancol.liquidacion.util.LiquidacionPageSpecification;
 import com.main.tancol.liquidacion.util.LiquidacionSpecification;
 import com.main.tancol.liquidacion.util.LiquidacionValueMapper;
 import com.main.tancol.logistica.entities.bitacora.TrayectoEntity;
@@ -26,6 +31,7 @@ import com.main.tancol.permisos.service.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
@@ -269,6 +275,99 @@ public class LiquidacionService implements ILiquidacionService {
 
     public Specification<LiquidacionEntity> filterWithParameters(Map<String, String> params) {
         return new LiquidacionSpecification().getSpecificationByFilters(params);
+    }
+
+    // ------------------------------------------------------------------ pagina (GET /liquidacion/page)
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "fecha", "folio", "bloqueNota", "estatus", "partidas", "totalEstimado", "createdAt", "updatedAt",
+            "ruta", "rutaIds", "chofer", "choferIds", "ayudante", "ayudanteIds", "vehiculo", "vehiculoIds"
+    );
+
+    /** Llave de orden del front -> ruta de atributo JPA. */
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "fecha", "fecha",
+            "folio", "folio",
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt",
+            "estatus", "estadosLiquidacion",
+            "bloqueNota", "bloqueNota",
+            "ruta", "ruta.nombre",
+            "chofer", "ruta.chofer.nombre"
+    );
+
+    /** Ordenes calculados con subconsulta en la especificacion. */
+    private static final Map<String, LiquidacionPageSpecification.OrdenCalculado> PAGE_SORTS_CALCULADOS = Map.of(
+            "partidas", LiquidacionPageSpecification.OrdenCalculado.PARTIDAS,
+            "totalEstimado", LiquidacionPageSpecification.OrdenCalculado.TOTAL_ESTIMADO
+    );
+
+    private static final Set<String> PAGE_SORT_KEYS;
+
+    static {
+        Set<String> keys = new HashSet<>(PAGE_SORTS.keySet());
+        keys.addAll(PAGE_SORTS_CALCULADOS.keySet());
+        PAGE_SORT_KEYS = Set.copyOf(keys);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LiquidacionListResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage page = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORT_KEYS);
+
+        LiquidacionPageSpecification.OrdenCalculado ordenCalculado =
+                page.sortKey() == null ? null : PAGE_SORTS_CALCULADOS.get(page.sortKey());
+        Sort.Direction direccionCalculada = null;
+        Sort sort;
+        if (ordenCalculado != null) {
+            String direction = page.sortDirection() == null ? "" : page.sortDirection().trim();
+            if (!direction.equals("ASC") && !direction.equals("DESC")) {
+                throw new FilterNotFound("Invalid filter: sort_" + page.sortKey());
+            }
+            direccionCalculada = Sort.Direction.valueOf(direction);
+            sort = Sort.unsorted();
+        } else {
+            sort = page.sort(
+                    PAGE_SORTS,
+                    Sort.by(Sort.Order.desc("fecha"), Sort.Order.desc("createdAt")),
+                    "idLiquidacion"
+            );
+        }
+
+        Page<LiquidacionEntity> result = repository.findAll(
+                new LiquidacionPageSpecification(page.search(), page.filters(), ordenCalculado, direccionCalculada),
+                page.pageable(sort)
+        );
+
+        List<LiquidacionEntity> entities = result.getContent();
+        Map<UUID, Object[]> resumen = new HashMap<>();
+        if (!entities.isEmpty()) {
+            List<UUID> ids = entities.stream().map(LiquidacionEntity::getIdLiquidacion).toList();
+            for (Object[] row : repository.resumenPartidas(ids)) {
+                resumen.put((UUID) row[0], row);
+            }
+        }
+
+        List<LiquidacionListResponseDTO> items = entities.stream()
+                .map(entity -> {
+                    Object[] row = resumen.get(entity.getIdLiquidacion());
+                    long partidas = row == null || row[1] == null ? 0L : ((Number) row[1]).longValue();
+                    BigDecimal total = row == null ? BigDecimal.ZERO : toBigDecimal(row[2]);
+                    return LiquidacionValueMapper.LiquidacionEntityToListResponse(entity, partidas, total);
+                })
+                .toList();
+
+        return new PageResponse<>(items, result.getTotalElements(), page.page(), page.pageSize());
+    }
+
+    private static BigDecimal toBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        return new BigDecimal(value.toString());
     }
 
     public NotaDTO notaMasAlta(String id) {

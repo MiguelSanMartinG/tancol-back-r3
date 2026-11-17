@@ -2,6 +2,7 @@ package com.main.tancol.almacen.controller;
 
 
 import com.main.tancol.almacen.service.InventarioService;
+import com.main.tancol.common.dto.PageResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.*;
@@ -33,6 +34,11 @@ public class InventarioController {
     public ResponseEntity<List<InventarioResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<InventarioResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<InventarioResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/{id}")

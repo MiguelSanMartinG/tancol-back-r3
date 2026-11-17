@@ -12,7 +12,10 @@ import com.main.tancol.almacen.repositories.AlmacenRepository;
 import com.main.tancol.almacen.repositories.InventarioRepository;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
 import com.main.tancol.almacen.service.interfaces.IInventarioService;
+import com.main.tancol.almacen.util.InventarioPageSpecification;
 import com.main.tancol.almacen.util.InventarioSpecification;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.almacen.util.InventarioValueMapper;
 import com.main.tancol.almacen.util.PartidaTransferenciaValueMapper;
 import com.main.tancol.common.exeptions.IDNotFound;
@@ -27,6 +30,7 @@ import jakarta.transaction.Transactional;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -160,6 +164,37 @@ public class InventarioService implements IInventarioService {
 
     public Specification<InventarioEntity> filterWithParameters(Map<String, String> params) {
         return new InventarioSpecification().getSpecificationByFilters(params);
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of(
+            "almacen", "producto", "cantidad", "categoria", "categoriaPadre", "sku",
+            "unidadMedida", "unidadesMedida", "createdAt", "updatedAt"
+    );
+    private static final Map<String, String> PAGE_SORTS = Map.ofEntries(
+            Map.entry("almacen", "almacen.nombre"),
+            Map.entry("producto", "productoBasicoEntity.nombre"),
+            Map.entry("cantidad", "cantidad"),
+            Map.entry("categoria", "productoBasicoEntity.categoriaProductoEntity.nombre"),
+            Map.entry("categoriaPadre", "productoBasicoEntity.categoriaProductoEntity.categoriaPadre.nombre"),
+            Map.entry("sku", "productoBasicoEntity.sku"),
+            Map.entry("unidadMedida", "unidadDeMedida.nombre"),
+            Map.entry("unidadesMedida", "unidadDeMedida.nombre"),
+            Map.entry("createdAt", "createdAt"),
+            Map.entry("updatedAt", "updatedAt")
+    );
+
+    /** GET /inventario/page: pagina, filtra y ordena en el servidor (Inventario general e Inventario inicial). */
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<InventarioResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORTS.keySet());
+        Sort fallback = Sort.by(Sort.Order.asc("almacen.nombre"), Sort.Order.asc("productoBasicoEntity.nombre"));
+        var result = inventarioRepository.findAll(
+                new InventarioPageSpecification(query.search(), query.filters()),
+                query.pageable(query.sort(PAGE_SORTS, fallback, "id"))
+        );
+        var items = result.getContent().stream().map(InventarioValueMapper::InventarioEntityToResponse).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
     @Transactional

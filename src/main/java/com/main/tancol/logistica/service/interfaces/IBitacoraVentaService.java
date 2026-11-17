@@ -1,6 +1,8 @@
 package com.main.tancol.logistica.service.interfaces;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.logistica.dto.request.BitacoraVentaRequestDTO;
+import com.main.tancol.logistica.dto.response.BitacoraVentaListResponseDTO;
 import com.main.tancol.logistica.dto.response.BitacoraVentaResponseDTO;
 
 import java.util.List;
@@ -12,6 +14,8 @@ public interface IBitacoraVentaService {
     BitacoraVentaResponseDTO create(BitacoraVentaRequestDTO dto);
 
     List<BitacoraVentaResponseDTO> getAll(Map<String, String> params);
+
+    PageResponse<BitacoraVentaListResponseDTO> getPage(Map<String, String> params);
 
     BitacoraVentaResponseDTO getById(UUID id);
 

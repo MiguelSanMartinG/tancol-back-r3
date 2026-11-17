@@ -1,6 +1,8 @@
 package com.main.tancol.logistica.controllers;
 
+import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.logistica.dto.request.BitacoraVentaRequestDTO;
+import com.main.tancol.logistica.dto.response.BitacoraVentaListResponseDTO;
 import com.main.tancol.logistica.dto.response.BitacoraVentaResponseDTO;
 import com.main.tancol.logistica.service.bitacoras.BitacoraVentaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +37,16 @@ public class BitacoraVentaController {
     public ResponseEntity<List<BitacoraVentaResponseDTO>> findAll(@RequestParam Map<String, String> params) {
         List<BitacoraVentaResponseDTO> response = this.service.getAll(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    /**
+     * Lista paginada para la tabla. Filtros (filter_*): fecha, folio, status, partidas, createdAt, updatedAt.
+     * Orden (sort_*=ASC|DESC): fecha, folio, status, createdAt, updatedAt, partidas. Por defecto createdAt DESC.
+     * search busca en folio.
+     */
+    @GetMapping("/page")
+    public ResponseEntity<PageResponse<BitacoraVentaListResponseDTO>> page(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(service.getPage(params));
     }
 
     @GetMapping("/fecha/{check}")

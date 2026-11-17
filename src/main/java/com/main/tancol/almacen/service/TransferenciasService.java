@@ -10,8 +10,12 @@ import com.main.tancol.almacen.repositories.AlmacenRepository;
 import com.main.tancol.almacen.repositories.TransferenciasRepository;
 import com.main.tancol.almacen.repositories.UnidadesMedidaRepository;
 import com.main.tancol.almacen.service.interfaces.ITransferenciasService;
+import com.main.tancol.almacen.util.TransferenciasPageSpecification;
 import com.main.tancol.almacen.util.TransferenciasSpecification;
 import com.main.tancol.almacen.util.TransferenciasValueMapper;
+import com.main.tancol.common.dto.CatalogPage;
+import com.main.tancol.common.dto.PageResponse;
+import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.repositories.EmpleadosRepository;
@@ -20,12 +24,14 @@ import com.main.tancol.producto.repositories.ProductoRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -114,6 +120,51 @@ public class TransferenciasService implements ITransferenciasService {
 
     public Specification<TransferenciasEntity> filterWithParameters(Map<String, String> params) {
         return new TransferenciasSpecification().getSpecificationByFilters(params);
+    }
+
+    private static final Set<String> PAGE_FILTERS = Set.of("base", "destino", "entrego", "entregoel");
+    private static final Map<String, String> PAGE_SORTS = Map.of(
+            "entrego", "empleado.nombre",
+            "entregoel", "fechaTransferencia"
+    );
+    /** Ordenes calculados con subconsulta en la especificacion (almacen de las partidas). */
+    private static final Map<String, TransferenciasPageSpecification.OrdenCalculado> PAGE_SORTS_CALCULADOS = Map.of(
+            "base", TransferenciasPageSpecification.OrdenCalculado.BASE,
+            "destino", TransferenciasPageSpecification.OrdenCalculado.DESTINO
+    );
+    private static final Set<String> PAGE_SORT_KEYS = Set.of("base", "destino", "entrego", "entregoel");
+
+    /** GET /transferencias/page. Orden por defecto: fecha de transferencia DESC. */
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PageResponse<TransferenciasResponseDTO> getPage(Map<String, String> params) {
+        CatalogPage query = CatalogPage.parse(params, PAGE_FILTERS, PAGE_SORT_KEYS);
+
+        TransferenciasPageSpecification.OrdenCalculado ordenCalculado =
+                query.sortKey() == null ? null : PAGE_SORTS_CALCULADOS.get(query.sortKey());
+        Sort.Direction direccionCalculada = null;
+        Sort sort;
+        if (ordenCalculado != null) {
+            String direction = query.sortDirection() == null ? "" : query.sortDirection().trim();
+            if (!direction.equals("ASC") && !direction.equals("DESC")) {
+                throw new FilterNotFound("Invalid filter: sort_" + query.sortKey());
+            }
+            direccionCalculada = Sort.Direction.valueOf(direction);
+            sort = Sort.unsorted();
+        } else {
+            sort = query.sort(
+                    PAGE_SORTS,
+                    Sort.by(Sort.Order.desc("fechaTransferencia"), Sort.Order.desc("createdAt")),
+                    "idTransferencia"
+            );
+        }
+
+        var result = repository.findAll(
+                new TransferenciasPageSpecification(query.search(), query.filters(), ordenCalculado, direccionCalculada),
+                query.pageable(sort)
+        );
+        var items = result.getContent().stream().map(TransferenciasValueMapper::TransferenciasEntityToResponse).toList();
+        return new PageResponse<>(items, result.getTotalElements(), query.page(), query.pageSize());
     }
 
 
