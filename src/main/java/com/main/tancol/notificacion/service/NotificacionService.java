@@ -81,6 +81,42 @@ public class NotificacionService implements INotificacionService {
         return destinatariosDe(TipoNotificacion.BOTELLON_ROTO_SOBRE_TOLERANCIA);
     }
 
+    public List<EmpleadosEntity> destinatariosVigenciaEmpleados() {
+        return destinatariosDe(TipoNotificacion.VIGENCIA_EMPLEADO_POR_VENCER);
+    }
+
+    /**
+     * Aviso de vigencia por vencer de un empleado temporal o practicante. No se repite para la
+     * misma vigencia: si ya se avisó desde {@code desde}, no crea otra.
+     */
+    @Transactional
+    public int crearVigenciaEmpleado(List<EmpleadosEntity> destinatarios,
+                                     UUID empleadoEvaluadoId,
+                                     String titulo,
+                                     String mensaje,
+                                     LocalDateTime desde) {
+        if (destinatarios == null || destinatarios.isEmpty()) {
+            return 0;
+        }
+        if (repository.existsByTipoAndEmpleadoEvaluadoIdAndCreatedAtGreaterThanEqualAndDeletedFalse(
+                TipoNotificacion.VIGENCIA_EMPLEADO_POR_VENCER, empleadoEvaluadoId, desde)) {
+            return 0;
+        }
+        int creadas = 0;
+        for (EmpleadosEntity empleado : destinatarios) {
+            repository.save(NotificacionEntity.builder()
+                    .titulo(titulo)
+                    .mensaje(mensaje)
+                    .tipo(TipoNotificacion.VIGENCIA_EMPLEADO_POR_VENCER)
+                    .leida(false)
+                    .empleado(empleado)
+                    .empleadoEvaluadoId(empleadoEvaluadoId)
+                    .build());
+            creadas++;
+        }
+        return creadas;
+    }
+
     public List<EmpleadosEntity> destinatariosRecepcionOrden() {
         return destinatariosDe(TipoNotificacion.ORDEN_ENVIADA_RECEPCION);
     }

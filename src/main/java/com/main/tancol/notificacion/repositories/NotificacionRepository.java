@@ -27,4 +27,7 @@ public interface NotificacionRepository extends CrudRepository<NotificacionEntit
             UUID productoId,
             TipoNotificacion tipo,
             LocalDateTime periodoInicio);
+
+    boolean existsByTipoAndEmpleadoEvaluadoIdAndCreatedAtGreaterThanEqualAndDeletedFalse(
+            TipoNotificacion tipo, UUID empleadoEvaluadoId, java.time.LocalDateTime desde);
 }

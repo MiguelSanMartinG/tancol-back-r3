@@ -54,4 +54,17 @@ public interface EmpleadosRepository extends CrudRepository<EmpleadosEntity, UUI
               AND p.canRead = true
             """)
     List<EmpleadosEntity> findByModuleReadPermission(@Param("moduleName") String moduleName);
+
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT e FROM EmpleadosEntity e
+            WHERE e.deleted = false
+              AND e.enabled = true
+              AND e.tipoContratacion IN :tipos
+              AND e.fechaVigencia BETWEEN :desde AND :hasta
+            ORDER BY e.fechaVigencia ASC
+            """)
+    java.util.List<EmpleadosEntity> findConVigenciaEntre(
+            @org.springframework.data.repository.query.Param("tipos") java.util.Collection<com.main.tancol.empleados.enums.TipoContratacion> tipos,
+            @org.springframework.data.repository.query.Param("desde") java.time.LocalDate desde,
+            @org.springframework.data.repository.query.Param("hasta") java.time.LocalDate hasta);
 }

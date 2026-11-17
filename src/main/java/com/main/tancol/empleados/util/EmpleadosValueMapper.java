@@ -47,6 +47,14 @@ public class EmpleadosValueMapper {
                 .updatedAt(dto.getUpdatedAt())
                 .departamento(dto.getDepartamento() != null ? DepartamentoMapper.DepartamentoEntityToResponseSimpleDTO(dto.getDepartamento()): null)
                 .tipoEmpleado(dto.getTiposEmpleados() != null ?TiposEmpleadosValueMapper.TiposEmpleadosEntityToResponseSimpleDTO(dto.getTiposEmpleados()): null)
+                .nss(dto.getNss())
+                .rfc(dto.getRfc())
+                .curp(dto.getCurp())
+                .fechaIngreso(dto.getFechaIngreso())
+                .fechaEgreso(dto.getFechaEgreso())
+                .observaciones(dto.getObservaciones())
+                .tipoContratacion(dto.getTipoContratacion())
+                .fechaVigencia(dto.getFechaVigencia())
                 .build();
     }
 
