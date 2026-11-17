@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public interface BitacoraMedicionRepository extends CrudRepository<BitacoraMedicionEntity, UUID>, JpaSpecificationExecutor<BitacoraMedicionEntity> {
 
+    Optional<BitacoraMedicionEntity> findTopByMedidor_IdMedidorOrderByCreatedAtDesc(UUID idMedidor);
+
     Optional<BitacoraMedicionEntity> findTopByMedidor_IdMedidorAndCreatedAtBeforeOrderByCreatedAtDesc(
             UUID medidorId,
             LocalDateTime before

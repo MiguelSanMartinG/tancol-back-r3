@@ -43,7 +43,6 @@ public class BitacoraMedicionController {
     }
 
     @PutMapping("/{id}")
-    @Hidden
     public ResponseEntity<BitacoraMedicionResponseDTO> update(@PathVariable UUID id, @RequestBody BitacoraMedicionRequestDTO dto) {
         return ResponseEntity.ok(service.update(id,dto));
     }
