@@ -43,6 +43,8 @@ public class OrdenInternaValueMapper {
                 .fechaElaboracion(dto.getFechaElaboracion())
                 .createdAt(dto.getCreatedAt())
                 .updatedAt(dto.getUpdatedAt())
+                .idImagenFirmaRecibe(dto.getIdImagenFirmaRecibe())
+                .fechaFirmaRecibe(dto.getFechaFirmaRecibe())
                 .build();
     }
 

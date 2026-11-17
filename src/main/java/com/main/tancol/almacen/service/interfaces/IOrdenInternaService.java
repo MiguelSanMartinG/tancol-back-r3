@@ -1,5 +1,6 @@
 package com.main.tancol.almacen.service.interfaces;
 
+import com.main.tancol.almacen.dto.request.FirmaRecibeOrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.request.OrdenInternaRequestDTO;
 import com.main.tancol.almacen.dto.response.OrdenInternaResponseDTO;
 
@@ -16,4 +17,6 @@ public interface IOrdenInternaService {
     OrdenInternaResponseDTO update(UUID id ,OrdenInternaRequestDTO dto);
 
     OrdenInternaResponseDTO delete(UUID dto);
+
+    OrdenInternaResponseDTO firmarRecibe(UUID id, FirmaRecibeOrdenInternaRequestDTO dto);
 }
