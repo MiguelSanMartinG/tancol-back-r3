@@ -65,6 +65,20 @@ public class MedidoresEntity extends BaseEntity {
     @Column(name = "alerta_consumo_litros", precision = 19, scale = 2)
     private BigDecimal alertaConsumoLitros;
 
+    /** Medidor que reemplazó a este al reiniciarlo. Un medidor reemplazado ya no recibe lecturas. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "medidor_reemplazado_por_id")
+    private MedidoresEntity medidorReemplazadoPor;
+
+    /** Medidor al que este reemplazó. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reemplaza_a_id")
+    private MedidoresEntity reemplazaA;
+
+    @Column(name = "fecha_reemplazo")
+    @JdbcTypeCode(SqlTypes.TIMESTAMP)
+    private LocalDateTime fechaReemplazo;
+
     @Column(name = "fecha_ultima_medicion")
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     private LocalDateTime fechaUltimaMedicion;

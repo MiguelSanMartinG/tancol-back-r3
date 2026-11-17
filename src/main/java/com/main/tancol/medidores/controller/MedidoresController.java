@@ -35,7 +35,7 @@ public class MedidoresController {
 
     @PostMapping("/reset")
     public ResponseEntity<Void> reset(@Valid @RequestBody ResetMedidorRequestDTO dto) {
-        this.service.resetMedidor(dto.getIdMedidor(), dto.getMensaje());
+        this.service.resetMedidor(dto);
         return ResponseEntity.noContent().build(); // 204
     }
 

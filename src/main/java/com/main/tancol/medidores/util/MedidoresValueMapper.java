@@ -1,5 +1,6 @@
 package com.main.tancol.medidores.util;
 
+import com.main.tancol.medidores.dto.response.MedidorRefDTO;
 import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.util.UnidadesMedidaValueMapper;
 import com.main.tancol.medidores.dto.request.MedidoresRequestDTO;
@@ -71,6 +72,9 @@ public class MedidoresValueMapper {
                 .deleted(dto.isDeleted())
                 .ultimaMedicion(dto.getMedicion())
                 .alertaConsumoLitros(dto.getAlertaConsumoLitros())
+                .reemplazadoPor(MedidorRefDTO.de(dto.getMedidorReemplazadoPor()))
+                .reemplazaA(MedidorRefDTO.de(dto.getReemplazaA()))
+                .fechaReemplazo(dto.getFechaReemplazo())
                 .medidoresHijos(ObjectUtils.isNotEmpty(dto.getMedidoresHijos())
                         ? dto.getMedidoresHijos().stream().map(h -> MedidoresEntityToResponseSimple(h, estado)).toList()
                         : null)
