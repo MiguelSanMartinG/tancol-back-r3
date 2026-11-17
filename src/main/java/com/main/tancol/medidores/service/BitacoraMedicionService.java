@@ -1,5 +1,6 @@
 package com.main.tancol.medidores.service;
 
+import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.helpers.EmpleadoContext;
@@ -23,6 +24,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +36,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class BitacoraMedicionService implements IBitacoraMedicionService {
+
+    static final ZoneId ZONA_MEXICO = ZoneId.of("America/Mexico_City");
 
     private final BitacoraMedicionRepository repository;
     private final MedidoresRepository medidoresRepository;
@@ -83,9 +88,61 @@ public class BitacoraMedicionService implements IBitacoraMedicionService {
         return null;
     }
 
+    /**
+     * Corrige la lectura capturada hoy. Solo se puede editar la última lectura del medidor y solo
+     * mientras sea el mismo día (hora de México): a las 23:59:59 la lectura queda cerrada.
+     * El consumo se recalcula contra la misma base que se usó al capturarla.
+     */
     @Override
+    @Transactional
     public BitacoraMedicionResponseDTO update(UUID id, BitacoraMedicionRequestDTO dto) {
-        return null;
+        BitacoraMedicionEntity registro = repository.findById(id)
+                .orElseThrow(() -> new IDNotFound("Lectura no encontrada"));
+        if (dto.getMedicionActual() == null || dto.getMedicionActual().signum() <= 0) {
+            throw new GenericExeption("La lectura debe ser mayor a cero.");
+        }
+        if (!esDeHoy(registro.getCreatedAt())) {
+            throw new GenericExeption("La lectura ya está cerrada: solo se puede editar el mismo día en que se capturó.");
+        }
+        MedidoresEntity medidor = registro.getMedidor();
+        boolean esUltima = repository.findTopByMedidor_IdMedidorOrderByCreatedAtDesc(medidor.getIdMedidor())
+                .map(ultima -> ultima.getId().equals(registro.getId()))
+                .orElse(false);
+        if (!esUltima) {
+            throw new GenericExeption("Solo se puede editar la última lectura del medidor.");
+        }
+
+        BigDecimal base = registro.getConsumo() != null && registro.getMedidaActual() != null
+                ? registro.getMedidaActual().subtract(registro.getConsumo())
+                : registro.getMedidaInicial();
+        registro.setMedidaActual(dto.getMedicionActual());
+        registro.setConsumo(dto.getMedicionActual().subtract(base));
+        registro.setComentario(dto.getComentario());
+        registro.setLiquidado(dto.getLiquidado());
+        registro.setQuedadoEnPipa(dto.getQuedadoEnPipa());
+        registro.setLitrosMinuto(dto.getLitrosMinuto());
+
+        medidor.setMedicion(dto.getMedicionActual());
+        medidoresRepository.save(medidor);
+
+        BitacoraMedicionEntity guardado = repository.save(registro);
+        MedidoresEntity medidorConHijos = medidoresRepository.findById(medidor.getIdMedidor()).orElse(medidor);
+        guardado.setMedidor(medidorConHijos);
+        MedidorEstadoContext estado = medidorEstadoService.construirContexto(List.of(medidorConHijos));
+        return BitacoraMedicionValueMapper.BitacoraMedicionEntityToResponse(guardado, estado);
+    }
+
+    /** createdAt se guarda con la hora del servidor; el día de corte es el de México. */
+    static boolean esDeHoy(LocalDateTime createdAt) {
+        return esMismoDiaMexico(createdAt, ZonedDateTime.now(ZONA_MEXICO).toLocalDate(), ZoneId.systemDefault());
+    }
+
+    static boolean esMismoDiaMexico(LocalDateTime createdAt, LocalDate hoyMexico, ZoneId zonaServidor) {
+        if (createdAt == null) {
+            return false;
+        }
+        LocalDate diaMexico = createdAt.atZone(zonaServidor).withZoneSameInstant(ZONA_MEXICO).toLocalDate();
+        return diaMexico.equals(hoyMexico);
     }
 
     @Override
