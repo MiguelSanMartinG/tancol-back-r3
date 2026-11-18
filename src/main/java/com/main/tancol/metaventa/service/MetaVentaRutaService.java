@@ -110,6 +110,16 @@ public class MetaVentaRutaService implements IMetaVentaRutaService {
         return MetaVentaRutaValueMapper.entityToResponse(repository.save(meta));
     }
 
+    /** Baja lógica: la meta deja de mostrarse y de evaluarse; se puede crear otra para la misma ruta y producto. */
+    @Override
+    @Transactional
+    public void delete(UUID id) {
+        MetaVentaRutaEntity meta = buscar(id);
+        meta.setActiva(false);
+        meta.setDeleted(true);
+        repository.save(meta);
+    }
+
     private MetaVentaRutaEntity buscar(UUID id) {
         MetaVentaRutaEntity meta = repository.findById(id)
                 .orElseThrow(() -> new IDNotFound("No se encontró la meta"));

@@ -19,4 +19,6 @@ public interface IMetaVentaRutaService {
     MetaVentaRutaResponseDTO update(UUID id, MetaVentaUpdateRequestDTO dto);
 
     MetaVentaRutaResponseDTO cerrar(UUID id);
+
+    void delete(UUID id);
 }

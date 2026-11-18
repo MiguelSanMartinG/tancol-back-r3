@@ -50,4 +50,11 @@ public class MetaVentaRutaController {
     public ResponseEntity<MetaVentaRutaResponseDTO> cerrar(@PathVariable UUID id) {
         return ResponseEntity.ok(service.cerrar(id));
     }
+
+    /** Elimina la meta (baja lógica). Sustituye a "Cerrar meta" en la pantalla. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
