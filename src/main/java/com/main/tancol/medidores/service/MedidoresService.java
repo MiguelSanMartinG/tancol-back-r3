@@ -178,7 +178,7 @@ public class MedidoresService implements IMedidoresService {
         BigDecimal ultima = anterior.getMedicion();
         if (ultima != null && medicionAnterior.compareTo(ultima) < 0) {
             throw new GenericExeption("La medición anterior no puede ser menor que la última lectura del medidor ("
-                    + ultima.multiply(BigDecimal.valueOf(1000)).stripTrailingZeros().toPlainString() + " LTS).");
+                    + ultima.stripTrailingZeros().toPlainString() + " LTS).");
         }
     }
 

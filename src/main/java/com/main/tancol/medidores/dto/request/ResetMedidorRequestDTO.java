@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Reinicio de un medidor físico: se cierra con su última lectura real (medicionAnterior, en m3
+ * Reinicio de un medidor físico: se cierra con su última lectura real (medicionAnterior, en litros
  * como la bitácora) y lo reemplaza otro medidor ya dado de alta.
  */
 @Value
