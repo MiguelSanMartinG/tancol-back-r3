@@ -189,10 +189,10 @@ public class CuadreInventarioService {
         if (dto.getObservaciones() != null) {
             cuadre.setObservaciones(limpiar(dto.getObservaciones()));
         }
-        long faltantes = cuadre.getPartidas().stream().filter(p -> p.getCantidadFisica() == null).count();
-        if (faltantes > 0) {
-            throw new GenericExeption("Falta capturar la cantidad actual de " + faltantes
-                    + (faltantes == 1 ? " producto." : " productos."));
+        // El cierre no exige contar todo: las partidas sin capturar no se ajustan y conservan su existencia.
+        boolean algunaCapturada = cuadre.getPartidas().stream().anyMatch(p -> p.getCantidadFisica() != null);
+        if (!algunaCapturada) {
+            throw new GenericExeption("Captura la cantidad actual de al menos un producto para cerrar el cuadre.");
         }
 
         boolean ajustar = Boolean.TRUE.equals(dto.getAjustarExistencia());
@@ -216,12 +216,15 @@ public class CuadreInventarioService {
         return toResponse(repository.save(cuadre), false);
     }
 
-    /** La existencia queda igual a lo contado; si bajó, se revisa el stock mínimo como en una salida. */
+    /**
+     * La existencia queda igual a lo contado; si bajó, se revisa el stock mínimo como en una salida.
+     * Solo se ajustan las partidas capturadas; las demás se dejan como están.
+     */
     private void ajustarExistencia(CuadreInventarioEntity cuadre) {
         Set<UUID> productosQueBajaron = new LinkedHashSet<>();
         for (CuadreInventarioPartidaEntity partida : cuadre.getPartidas()) {
             InventarioEntity item = partida.getInventario();
-            if (item == null || item.isDeleted()) {
+            if (item == null || item.isDeleted() || partida.getCantidadFisica() == null) {
                 continue;
             }
             BigDecimal actual = item.getCantidad() != null ? item.getCantidad() : BigDecimal.ZERO;
