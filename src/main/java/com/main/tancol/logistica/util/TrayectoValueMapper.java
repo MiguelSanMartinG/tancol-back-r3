@@ -1,6 +1,7 @@
 package com.main.tancol.logistica.util;
 
 
+import com.main.tancol.liquidacion.util.TurnoLiquidacion;
 import com.main.tancol.empleados.util.EmpleadosValueMapper;
 import com.main.tancol.logistica.dto.request.TrayectoRequestDTO;
 import com.main.tancol.logistica.dto.response.TrayectoResponseDTO;
@@ -27,6 +28,7 @@ public class TrayectoValueMapper {
                 .chofer(rutaConductorVehiculo.conductor())
                 .vehiculo(rutaConductorVehiculo.vehiculo())
                 .tipoProceso(tipo)
+                .turno(TurnoLiquidacion.normalizar(dto.getTurno(), rutaConductorVehiculo.ruta()))
                 .idImagenFirma(dto.getIdImagenFirma().isBlank() ? null : dto.getIdImagenFirma())
                 .estadoVentaRuta(EstadoVentaRuta.PENDIENTE)
                 .ventaTrayecto(new HashSet<>())
@@ -48,6 +50,7 @@ public class TrayectoValueMapper {
                         ? dto.getVentaTrayecto().stream().map(VentaTrayectoValueMapper::VentaTrayectoEntityToResponse).collect(Collectors.toSet())
                         : new HashSet<>())
                 .tipoProceso(ObjectUtils.isNotEmpty(dto.getTipoProceso()) ? dto.getTipoProceso() : TipoProceso.SIN_PROCESO)
+                .turno(dto.getTurno())
                 .fechaFirma(dto.getFechaFirma())
                 .createdAt(dto.getCreatedAt())
                 .updatedAt(dto.getUpdatedAt())

@@ -14,6 +14,8 @@ public class TrayectoRequestDTO {
     UUID idChofer;
     UUID idVehiculo;
     String tipoProceso;
+    /** Turno (MATUTINO, VESPERTINO, DOMINICAL); solo en rutas de autoservicio. */
+    String turno;
     String comentario;
 
     String idImagenFirma;

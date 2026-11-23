@@ -1,5 +1,6 @@
 package com.main.tancol.logistica.service.bitacoras;
 
+import com.main.tancol.liquidacion.util.TurnoLiquidacion;
 import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
@@ -104,6 +105,7 @@ public class TrayectoService implements ITrayectoService {
 
             viaje.setChofer(RutaConductorVehiculo.conductor());
             viaje.setRuta(RutaConductorVehiculo.ruta());
+            viaje.setTurno(TurnoLiquidacion.normalizar(dto.getTurno(), RutaConductorVehiculo.ruta()));
             viaje.setVehiculo(RutaConductorVehiculo.vehiculo());
 
             viaje.setIdImagenFirma(dto.getIdImagenFirma());

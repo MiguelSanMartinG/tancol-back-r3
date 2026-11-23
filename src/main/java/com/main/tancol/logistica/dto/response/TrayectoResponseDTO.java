@@ -32,5 +32,6 @@ public class TrayectoResponseDTO implements Serializable {
     private final LocalDateTime fechaFirma;
     private final String comentario;
     private final TipoProceso tipoProceso;
+    private final String turno;
     private final Set<VentaTrayectoResponseDTO> ventaTrayecto;
 }

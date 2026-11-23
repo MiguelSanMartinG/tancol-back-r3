@@ -476,6 +476,9 @@ public class LiquidacionService implements ILiquidacionService {
         }
 
         conteoTrayectoService.sincronizar(destino, viaje, anteriores, choferOriginalId);
+        if (destino.getTurno() == null && viaje.getTurno() != null) {
+            destino.setTurno(viaje.getTurno());
+        }
         viaje.setMandadoALiquidacion(true);
         repository.save(destino);
     }
@@ -497,6 +500,7 @@ public class LiquidacionService implements ILiquidacionService {
                     .totalesPorProductos(new LinkedList<>())
                     .liquidacionPartida(new LinkedList<>())
                     .ruta(viaje.getRuta())
+                    .turno(viaje.getTurno())
                     .origenBitacora(true)
                     .build();
 
@@ -509,6 +513,10 @@ public class LiquidacionService implements ILiquidacionService {
             LiquidacionEntity liquidacion = repository.findByFechaBetweenAndRuta_IdAndEstadosLiquidacionNotIn(
                     fechaInicio, fechaFin, viaje.getRuta().getId(), ESTADOS_LIQUIDACION_CERRADA);
             if(ObjectUtils.isEmpty(liquidacion)) throw new IDNotFound("No se encontro una liquidacion algo paso mal...");
+            // La liquidación del día toma el turno de la partida si aún no tiene uno.
+            if (liquidacion.getTurno() == null && viaje.getTurno() != null) {
+                liquidacion.setTurno(viaje.getTurno());
+            }
             poblarLiquidacion(viaje, liquidacion);
         }
 

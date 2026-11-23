@@ -50,6 +50,10 @@ public class TrayectoEntity {
     @Column(name = "tipo_proceso")
     private TipoProceso tipoProceso;
 
+    /** MATUTINO, VESPERTINO o DOMINICAL; solo en rutas de autoservicio. Pasa a la liquidación. */
+    @Column(name = "turno", length = 20)
+    private String turno;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_venta_ruta")
     private EstadoVentaRuta estadoVentaRuta;
