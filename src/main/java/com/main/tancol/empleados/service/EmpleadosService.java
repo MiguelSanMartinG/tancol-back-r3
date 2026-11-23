@@ -44,6 +44,7 @@ public class EmpleadosService implements IEmpleadosService {
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
     private final IClienteService clienteService;
+    private final EmpleadoDatosRhService datosRh;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -58,6 +59,8 @@ public class EmpleadosService implements IEmpleadosService {
         entity.setContra(passwordEncoder.encode(dto.getPassword()));
         entity.setEnabled(true);
         EmpleadoDatosLaborales.aplicar(entity, dto);
+        datosRh.validarListas(dto);
+        datosRh.aplicarPersonales(entity, dto);
 
         RoleEntity rol;
         if(dto.getIdRol() != null){
@@ -66,14 +69,15 @@ public class EmpleadosService implements IEmpleadosService {
         }
 
         EmpleadosEntity saved = repository.save(entity);
+        datosRh.guardarListas(saved, dto);
         clienteService.crearDesdeEmpleado(saved);
-        return EmpleadosValueMapper.EmpleadosEntityToResponse(saved);
+        return datosRh.completar(EmpleadosValueMapper.EmpleadosEntityToResponse(saved), saved.getId());
     }
 
     @Override
     public EmpleadosResponseDTO getById(UUID id) {
         EmpleadosEntity query = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Empleada no encontrada"));
-        return EmpleadosValueMapper.EmpleadosEntityToResponse(query);
+        return datosRh.completar(EmpleadosValueMapper.EmpleadosEntityToResponse(query), query.getId());
     }
 
     @Override
@@ -105,10 +109,14 @@ public class EmpleadosService implements IEmpleadosService {
         oldEmpleado.setRole(rol);
         oldEmpleado.setCorreo(dto.getCorreo());
         EmpleadoDatosLaborales.aplicar(oldEmpleado, dto);
+        datosRh.validarListas(dto);
+        datosRh.aplicarPersonales(oldEmpleado, dto);
         if(dto.getPassword() != null){
         oldEmpleado.setContra(passwordEncoder.encode(dto.getPassword()));
         }
-        return EmpleadosValueMapper.EmpleadosEntityToResponse(repository.save(oldEmpleado));
+        EmpleadosEntity guardado = repository.save(oldEmpleado);
+        datosRh.guardarListas(guardado, dto);
+        return datosRh.completar(EmpleadosValueMapper.EmpleadosEntityToResponse(guardado), guardado.getId());
     }
 
     @Override

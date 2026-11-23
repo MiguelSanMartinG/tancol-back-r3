@@ -95,6 +95,22 @@ public class EmpleadosEntity extends BaseEntity implements UserDetails {
     @Column(name = "fecha_vigencia")
     private LocalDate fechaVigencia;
 
+    // Datos de RH (opcionales)
+    @Column(name = "nacionalidad", length = 20)
+    private String nacionalidad;
+
+    @Column(name = "sexo", length = 20)
+    private String sexo;
+
+    @Column(name = "estado_civil", length = 20)
+    private String estadoCivil;
+
+    @Column(name = "tipo_sangre", length = 5)
+    private String tipoSangre;
+
+    @Embedded
+    private EmpleadoDomicilio domicilio;
+
     @Column(name = "contra")
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private String contra;

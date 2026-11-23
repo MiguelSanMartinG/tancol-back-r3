@@ -8,11 +8,13 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import com.main.tancol.empleados.dto.EmpleadoRhDTOs;
 import java.util.UUID;
 
 @AllArgsConstructor
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class EmpleadosResponseDTO {
     private UUID idEmpleado;
     private RoleResponseDTO role;
@@ -36,5 +38,12 @@ public class EmpleadosResponseDTO {
     private String observaciones;
     private TipoContratacion tipoContratacion;
     private LocalDate fechaVigencia;
+    private String nacionalidad;
+    private String sexo;
+    private String estadoCivil;
+    private String tipoSangre;
+    private EmpleadoRhDTOs.Domicilio domicilio;
+    private List<EmpleadoRhDTOs.ContactoEmergencia> contactosEmergencia;
+    private List<EmpleadoRhDTOs.Documento> documentos;
     // Agrega m??s campos aqu??
 }

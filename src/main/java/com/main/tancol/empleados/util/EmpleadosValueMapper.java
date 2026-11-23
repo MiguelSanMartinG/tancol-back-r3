@@ -55,6 +55,28 @@ public class EmpleadosValueMapper {
                 .observaciones(dto.getObservaciones())
                 .tipoContratacion(dto.getTipoContratacion())
                 .fechaVigencia(dto.getFechaVigencia())
+                .nacionalidad(dto.getNacionalidad())
+                .sexo(dto.getSexo())
+                .estadoCivil(dto.getEstadoCivil())
+                .tipoSangre(dto.getTipoSangre())
+                .domicilio(domicilioToDto(dto.getDomicilio()))
+                .build();
+    }
+
+    static com.main.tancol.empleados.dto.EmpleadoRhDTOs.Domicilio domicilioToDto(com.main.tancol.empleados.entities.EmpleadoDomicilio d) {
+        if (d == null) return null;
+        return com.main.tancol.empleados.dto.EmpleadoRhDTOs.Domicilio.builder()
+                .codigoPostal(d.getCodigoPostal())
+                .tipoVialidad(d.getTipoVialidad())
+                .nombreVialidad(d.getNombreVialidad())
+                .numeroExterior(d.getNumeroExterior())
+                .numeroInterior(d.getNumeroInterior())
+                .colonia(d.getColonia())
+                .localidad(d.getLocalidad())
+                .municipio(d.getMunicipio())
+                .entidadFederativa(d.getEntidadFederativa())
+                .calle1(d.getCalle1())
+                .calle2(d.getCalle2())
                 .build();
     }
 
