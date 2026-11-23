@@ -4,8 +4,10 @@ import com.main.tancol.cliente.entities.ClienteEntity;
 import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import org.hibernate.query.criteria.JpaExpression;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -35,7 +37,7 @@ public class ClientePageSpecification implements Specification<ClienteEntity> {
                     cb.like(cb.lower(root.get("nombreComercial")), pattern),
                     cb.like(cb.lower(root.get("informacionFiscal").get("razonSocial")), pattern),
                     cb.like(cb.lower(root.get("telefono")), pattern),
-                    cb.like(cb.lower(root.get("idCliente").as(String.class)), pattern),
+                    cb.like(cb.lower(numeroComoTexto(root)), pattern),
                     cb.like(cb.lower(root.get("tipoDeCliente").get("nombre")), pattern)
             ));
         }
@@ -48,9 +50,17 @@ public class ClientePageSpecification implements Specification<ClienteEntity> {
         return cb.and(predicates.toArray(Predicate[]::new));
     }
 
+    /**
+     * Número de cliente (Integer) como texto para buscarlo con LIKE. En Hibernate 6, {@code .as(String.class)}
+     * no genera un CAST en SQL y PostgreSQL rechazaba {@code lower(integer)}: la búsqueda fallaba.
+     */
+    private static Expression<String> numeroComoTexto(Root<ClienteEntity> root) {
+        return ((JpaExpression<?>) root.get("idCliente")).cast(String.class);
+    }
+
     private Predicate predicateFor(Root<ClienteEntity> root, CriteriaBuilder cb, String key, String value) {
         return switch (key) {
-            case "noCliente" -> cb.like(cb.lower(root.get("idCliente").as(String.class)), contains(value));
+            case "noCliente" -> cb.like(cb.lower(numeroComoTexto(root)), contains(value));
             case "nombreComercial" -> cb.like(cb.lower(root.get("nombreComercial")), contains(value));
             case "razonSocial" -> cb.like(cb.lower(root.get("informacionFiscal").get("razonSocial")), contains(value));
             case "idTipoDeCliente" -> cb.equal(root.get("tipoDeCliente").get("id"), parseUuid(value));
