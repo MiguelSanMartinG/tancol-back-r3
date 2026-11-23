@@ -43,6 +43,10 @@ public class LiquidacionEntity {
     @Column(name = "bloque_nota")
     private String bloqueNota;
 
+    /** MATUTINO, VESPERTINO o DOMINICAL; solo en rutas de autoservicio. */
+    @Column(name = "turno", length = 20)
+    private String turno;
+
     @Column(name = "observaciones", length = 500)
     private String observaciones;
 

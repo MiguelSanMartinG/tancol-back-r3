@@ -37,6 +37,7 @@ public class LiquidacionValueMapper {
                 .folio(dto.getFolio())
                 .ruta(ObjectUtils.isNotEmpty(dto.getRuta()) ? RutasValueMapper.RutasEntityToResponse(dto.getRuta()) : null)
                 .bloqueNota(dto.getBloqueNota())
+                .turno(dto.getTurno())
                 .createdAt(dto.getCreatedAt())
                 .updatedAt(dto.getUpdatedAt())
                 .estadosLiquidacion(dto.getEstadosLiquidacion())

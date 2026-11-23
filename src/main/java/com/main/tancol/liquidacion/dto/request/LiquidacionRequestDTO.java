@@ -19,6 +19,8 @@ public class LiquidacionRequestDTO implements Serializable {
     @NotNull
     LocalDateTime fecha;
     String bloqueNota;
+    /** Turno (MATUTINO, VESPERTINO, DOMINICAL); solo aplica en rutas de autoservicio. */
+    String turno;
     EstadosLiquidacion estado;
     String observaciones;
     List<LiquidacionPartidaRequestDTO> partida;

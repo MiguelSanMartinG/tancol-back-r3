@@ -1,5 +1,7 @@
 package com.main.tancol.liquidacion.service;
 
+import com.main.tancol.liquidacion.util.TurnoLiquidacion;
+
 import com.main.tancol.common.dto.CatalogPage;
 import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.common.exceptions.exeption.FilterNotFound;
@@ -73,6 +75,7 @@ public class LiquidacionService implements ILiquidacionService {
                 ruta = rutasRepository.findById(dto.getIdRuta()).orElseThrow(() -> new IDNotFound("Ruta no encontrada"));
                 entity.setRuta(ruta);
             }
+            entity.setTurno(TurnoLiquidacion.normalizar(dto.getTurno(), entity.getRuta()));
             entity.setOrigenBitacora(false);
             entity.setLiquidacionPartida(new LinkedList<>());
             entity.setTotalesPorProductos(new LinkedList<>());
@@ -155,6 +158,7 @@ public class LiquidacionService implements ILiquidacionService {
         liquidacion.setEstadosLiquidacion(dto.getEstado());
         }
         liquidacion.setBloqueNota(liquidacion.getBloqueNota());
+        liquidacion.setTurno(TurnoLiquidacion.normalizar(dto.getTurno(), route));
         liquidacion.setObservaciones(dto.getObservaciones());
         liquidacion.setEstadosLiquidacion(liquidacion.getEstadosLiquidacion());
 

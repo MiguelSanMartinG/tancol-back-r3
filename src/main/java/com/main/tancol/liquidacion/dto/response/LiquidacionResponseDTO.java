@@ -23,6 +23,7 @@ public class LiquidacionResponseDTO{
     RutasResponseDTO ruta;
     LocalDateTime fecha;
     String bloqueNota;
+    String turno;
     EstadosLiquidacion estadosLiquidacion;
     List<LiquidacionTotalizadoResponseDTO> totalizados;
     List<LiquidacionPartidaResponseDTO> partidas;
