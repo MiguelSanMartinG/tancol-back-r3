@@ -32,6 +32,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
+import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -53,6 +54,19 @@ public class ClienteService implements IClienteService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    /** Lanza 409 si otro cliente activo ya usa ese nombre comercial. */
+    private void validarNombreDisponible(String nombreComercial, UUID idActual) {
+        if (!StringUtils.hasText(nombreComercial)) {
+            return;
+        }
+        boolean existe = idActual == null
+                ? repository.existeNombreComercial(nombreComercial)
+                : repository.existeNombreComercialEnOtro(nombreComercial, idActual);
+        if (existe) {
+            throw new GenericExeption("Ya existe un cliente con el nombre comercial \"" + nombreComercial.trim() + "\".");
+        }
+    }
 
     public Integer getNextIdExterno() {
         return ((Number) entityManager
@@ -93,6 +107,7 @@ public class ClienteService implements IClienteService {
         TipoClienteEntity query = this.tiposClientesRepository.findById(dto.getIdTipoDeCliente())
                 .orElseThrow(() -> new IDNotFound("No se encontró el tipo de cliente"));
 
+        validarNombreDisponible(dto.getNombreComercial(), null);
         ClienteEntity cliente = ClienteValueMapper.ClienteRequestToEntity(dto , query, tipoPago, ruta);
         cliente.setIdCliente(getNextIdExterno());
 
@@ -102,6 +117,10 @@ public class ClienteService implements IClienteService {
 
     @Override
     public void crearDesdeEmpleado(EmpleadosEntity empleado) {
+        // Si ya hay un cliente con el nombre del empleado no se crea otro (evita duplicados).
+        if (repository.existeNombreComercial(nombreComercialDesdeEmpleado(empleado))) {
+            return;
+        }
         TipoClienteEntity tipoEmpleado = tiposClientesRepository
                 .findById(TIPO_CLIENTE_EMPLEADO_ID)
                 .orElseThrow(() -> new IDNotFound("No se encontró el tipo de cliente Empleado"));
@@ -145,6 +164,7 @@ public class ClienteService implements IClienteService {
     public ClienteResponseDTO update(UUID id, ClienteRequestDTO dto) {
         ClienteEntity query = repository.findById(id).orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
         TipoClienteEntity query2 = tiposClientesRepository.findById(dto.getIdTipoDeCliente()).orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        validarNombreDisponible(dto.getNombreComercial(), id);
         TipoPago tipoPago = null;
         try {
             tipoPago = TipoPago.valueOf(dto.getTipoPago().toUpperCase());
