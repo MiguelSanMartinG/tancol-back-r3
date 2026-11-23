@@ -57,6 +57,11 @@ public class ClienteProductoService {
 
     @Transactional
     public Set<ClienteProductoResponseDTO> update(UUID idCliente, Set<ClienteProductoRequestDTO> dto) {
+        return update(idCliente, dto, TipoActualizacionPrecio.INDIVIDUAL, null);
+    }
+
+    public Set<ClienteProductoResponseDTO> update(UUID idCliente, Set<ClienteProductoRequestDTO> dto,
+                                                  TipoActualizacionPrecio tipo, UUID operacionId) {
 
         List<ClienteProductoEntity> copy = new LinkedList<>(repository.findByCliente_Id(idCliente));
         List<CambioPrecio> cambios = new ArrayList<>();
@@ -90,7 +95,8 @@ public class ClienteProductoService {
                 ProductoComercialEntity pc = productoComercialRepository.findById(dtoItem.getIdProducto()).orElseThrow(() ->
                         new IDNotFound("No se encontro el producto"));
 
-                cambios.add(new CambioPrecio(pc, null, dtoItem.getDescuento()));
+                // Sin precio propio el cliente pagaba el precio base del producto: ese es el precio anterior.
+                cambios.add(new CambioPrecio(pc, pc.getPrecio(), dtoItem.getDescuento()));
                 ClienteProductoEntity clienteProducto = ClienteProductoEntity.builder()
                         .productoComercial(pc)
                         .cliente(cliente)
@@ -110,13 +116,14 @@ public class ClienteProductoService {
             repository.deleteById(miembro.getId());
         });
 
-        registrarHistorial(idCliente, cambios);
+        registrarHistorial(idCliente, cambios, tipo, operacionId);
 
         return repository.findByCliente_Id(idCliente).stream().map(ClienteProductoRelValueMapper::ClienteProductoEntityToResponse
         ).collect(Collectors.toSet());
     }
 
-    private void registrarHistorial(UUID idCliente, List<CambioPrecio> cambios) {
+    private void registrarHistorial(UUID idCliente, List<CambioPrecio> cambios,
+                                    TipoActualizacionPrecio tipoSolicitado, UUID operacionSolicitada) {
         if (cambios.isEmpty()) {
             return;
         }
@@ -128,10 +135,9 @@ public class ClienteProductoService {
 
         ClienteEntity cliente = clienteRepository.findById(idCliente)
                 .orElseThrow(() -> new IDNotFound("No se encontro el cliente"));
-        TipoActualizacionPrecio tipo = cambios.size() == 1
-                ? TipoActualizacionPrecio.INDIVIDUAL
-                : TipoActualizacionPrecio.MASIVA;
-        UUID operacionId = UUID.randomUUID();
+        // INDIVIDUAL = cambio desde la ficha del cliente; MASIVA = asignación a varios clientes (pestaña Precios).
+        TipoActualizacionPrecio tipo = tipoSolicitado != null ? tipoSolicitado : TipoActualizacionPrecio.INDIVIDUAL;
+        UUID operacionId = operacionSolicitada != null ? operacionSolicitada : UUID.randomUUID();
         LocalDateTime fecha = LocalDateTime.now();
 
         historialRepository.saveAll(cambios.stream().map(cambio -> {

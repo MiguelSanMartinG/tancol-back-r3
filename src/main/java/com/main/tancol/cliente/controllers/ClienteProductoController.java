@@ -3,6 +3,7 @@ package com.main.tancol.cliente.controllers;
 import com.main.tancol.cliente.dto.request.ClienteProductoRequestDTO;
 import com.main.tancol.cliente.dto.response.ClienteProductoResponseDTO;
 import com.main.tancol.cliente.entities.ClienteProductoEntity;
+import com.main.tancol.cliente.enums.TipoActualizacionPrecio;
 import com.main.tancol.cliente.service.ClienteProductoService;
 import com.main.tancol.cliente.util.ClienteProductoRelValueMapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,8 +39,14 @@ public class ClienteProductoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Set<ClienteProductoResponseDTO>> update(@PathVariable UUID id, @RequestBody Set<ClienteProductoRequestDTO> dto) {
-        return ResponseEntity.ok(service.update(id,dto));
+    public ResponseEntity<Set<ClienteProductoResponseDTO>> update(@PathVariable UUID id, @RequestBody Set<ClienteProductoRequestDTO> dto,
+                                                                  @RequestParam(required = false) String tipo,
+                                                                  @RequestParam(required = false) UUID operacion) {
+        // tipo=MASIVA y un mismo id de operación los manda la asignación masiva (pestaña Precios) para cada cliente.
+        TipoActualizacionPrecio tipoActualizacion = "MASIVA".equalsIgnoreCase(tipo)
+                ? TipoActualizacionPrecio.MASIVA
+                : TipoActualizacionPrecio.INDIVIDUAL;
+        return ResponseEntity.ok(service.update(id, dto, tipoActualizacion, operacion));
     }
 
 }
