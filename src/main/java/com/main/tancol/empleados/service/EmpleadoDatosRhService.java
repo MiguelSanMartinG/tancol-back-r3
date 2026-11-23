@@ -48,6 +48,11 @@ public class EmpleadoDatosRhService {
         empleado.setSexo(opcion(dto.getSexo(), SEXOS, "El sexo"));
         empleado.setEstadoCivil(opcion(dto.getEstadoCivil(), ESTADOS_CIVILES, "El estado civil"));
         empleado.setTipoSangre(opcion(dto.getTipoSangre(), TIPOS_SANGRE, "El tipo de sangre"));
+        String foto = texto(dto.getIdImagen());
+        if (foto != null && !ARCHIVO.matcher(foto).matches()) {
+            throw new GenericExeption("La foto del empleado no es válida.");
+        }
+        empleado.setIdImagen(foto);
         EmpleadoRhDTOs.Domicilio d = dto.getDomicilio();
         empleado.setDomicilio(d == null ? null : EmpleadoDomicilio.builder()
                 .codigoPostal(texto(d.getCodigoPostal()))

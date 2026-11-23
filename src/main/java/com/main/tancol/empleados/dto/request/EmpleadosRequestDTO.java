@@ -43,6 +43,8 @@ public class EmpleadosRequestDTO {
     String sexo;
     String estadoCivil;
     String tipoSangre;
+    /** Foto del empleado: nombre devuelto por POST /upload; vacío = sin foto. */
+    String idImagen;
     EmpleadoRhDTOs.Domicilio domicilio;
     /** null = no se modifican; lista (aunque vacía) = reemplaza a los guardados. */
     List<EmpleadoRhDTOs.ContactoEmergencia> contactosEmergencia;

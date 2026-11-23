@@ -16,6 +16,8 @@ public class LoginResponse {
     private String Nombre;
     private String ApellidoPaterno;
     private UUID idEmpleado;
+    /** Foto de perfil del empleado (nombre en /images) o null. */
+    private String idImagen;
     private long expiresIn;
 
 

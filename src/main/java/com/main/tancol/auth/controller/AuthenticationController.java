@@ -40,6 +40,7 @@ public class AuthenticationController {
                 .Nombre(authenticatedUser.getNombre())
                 .ApellidoPaterno(authenticatedUser.getPrimerApellido())
                 .idEmpleado(authenticatedUser.getId())
+                .idImagen(authenticatedUser.getIdImagen())
                 .token(jwtToken)
                 .expiresIn(jwtService.getExpirationTime())
                 .build();

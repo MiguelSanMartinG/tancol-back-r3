@@ -111,6 +111,10 @@ public class EmpleadosEntity extends BaseEntity implements UserDetails {
     @Embedded
     private EmpleadoDomicilio domicilio;
 
+    /** Foto del empleado (nombre de la imagen en /images); es su foto de perfil en el sistema. */
+    @Column(name = "id_imagen", length = 300)
+    private String idImagen;
+
     @Column(name = "contra")
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private String contra;

@@ -59,6 +59,7 @@ public class EmpleadosValueMapper {
                 .sexo(dto.getSexo())
                 .estadoCivil(dto.getEstadoCivil())
                 .tipoSangre(dto.getTipoSangre())
+                .idImagen(dto.getIdImagen())
                 .domicilio(domicilioToDto(dto.getDomicilio()))
                 .build();
     }

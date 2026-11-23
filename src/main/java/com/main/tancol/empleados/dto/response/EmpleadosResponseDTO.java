@@ -42,6 +42,7 @@ public class EmpleadosResponseDTO {
     private String sexo;
     private String estadoCivil;
     private String tipoSangre;
+    private String idImagen;
     private EmpleadoRhDTOs.Domicilio domicilio;
     private List<EmpleadoRhDTOs.ContactoEmergencia> contactosEmergencia;
     private List<EmpleadoRhDTOs.Documento> documentos;
