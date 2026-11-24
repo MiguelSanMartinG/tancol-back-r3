@@ -359,13 +359,17 @@ public class InventarioDiarioService {
 
     /** Las del rango y, siempre, las abiertas aunque sean de días anteriores. */
     @Transactional(readOnly = true)
-    public List<Solicitud> solicitudes(UUID areaId, LocalDate inicio, LocalDate fin, UUID empleadoId, EstatusSolicitud estatus) {
+    public List<Solicitud> solicitudes(UUID areaId, LocalDate inicio, LocalDate fin, UUID empleadoId, EstatusSolicitud estatus,
+                                       String folio) {
         Specification<SolicitudStockEntity> spec = (root, q, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             ps.add(cb.isFalse(root.get("deleted")));
             if (areaId != null) ps.add(cb.equal(root.get("area").get("id"), areaId));
             if (empleadoId != null) ps.add(cb.equal(root.get("solicitadoPor").get("id"), empleadoId));
-            if (estatus != null) {
+            String f = texto(folio);
+            if (f != null) {
+                ps.add(cb.equal(cb.upper(root.get("folio")), f.toUpperCase(Locale.ROOT)));
+            } else if (estatus != null) {
                 ps.add(cb.equal(root.get("estatus"), estatus));
             } else {
                 LocalDate[] r = rango(inicio, fin);

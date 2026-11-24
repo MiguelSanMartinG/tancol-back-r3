@@ -121,8 +121,9 @@ public class InventarioDiarioController {
                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
                                        @RequestParam(required = false) UUID empleadoId,
-                                       @RequestParam(required = false) EstatusSolicitud estatus) {
-        return service.solicitudes(areaId, inicio, fin, empleadoId, estatus);
+                                       @RequestParam(required = false) EstatusSolicitud estatus,
+                                       @RequestParam(required = false) String folio) {
+        return service.solicitudes(areaId, inicio, fin, empleadoId, estatus, folio);
     }
 
     @PostMapping("/solicitudes")
