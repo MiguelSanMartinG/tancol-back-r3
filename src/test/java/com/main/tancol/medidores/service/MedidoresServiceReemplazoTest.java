@@ -37,7 +37,7 @@ class MedidoresServiceReemplazoTest {
     @Test
     void medicionMenorQueLaUltima_falla() {
         GenericExeption ex = assertThrows(GenericExeption.class, () -> MedidoresService.validarReemplazo(
-                medidor("Pozo 1", "5.50"), medidor("Pozo 1B", "0"), new BigDecimal("5.00")));
+                medidor("Pozo 1", "5500"), medidor("Pozo 1B", "0"), new BigDecimal("5000")));
         assertTrue(ex.getMessage().contains("5500 LTS"));
     }
 
