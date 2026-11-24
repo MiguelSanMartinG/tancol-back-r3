@@ -1,6 +1,7 @@
 package com.main.tancol.prestamo.util;
 
 import com.main.tancol.common.exceptions.exeption.FilterNotFound;
+import com.main.tancol.common.specification.PagePredicates;
 import com.main.tancol.prestamo.entities.EquipoAsignacionEntity;
 import com.main.tancol.prestamo.entities.EquipoEntity;
 import com.main.tancol.prestamo.enums.EstadoEquipo;
@@ -11,8 +12,6 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -84,34 +83,7 @@ public class EquipoPageSpecification implements Specification<EquipoEntity> {
     }
 
     private Predicate dateRange(Root<EquipoEntity> root, CriteriaBuilder cb, String attribute, String value) {
-        String[] parts = splitRange(value);
-        List<Predicate> predicates = new ArrayList<>();
-        if (!parts[0].isBlank()) {
-            predicates.add(cb.greaterThanOrEqualTo(root.get(attribute), parseDate(parts[0]).atStartOfDay()));
-        }
-        if (!parts[1].isBlank()) {
-            predicates.add(cb.lessThan(root.get(attribute), parseDate(parts[1]).plusDays(1).atStartOfDay()));
-        }
-        if (predicates.isEmpty()) {
-            return cb.conjunction();
-        }
-        return cb.and(predicates.toArray(Predicate[]::new));
-    }
-
-    private static String[] splitRange(String value) {
-        int index = value.indexOf("..");
-        if (index < 0) {
-            return new String[]{value.trim(), ""};
-        }
-        return new String[]{value.substring(0, index).trim(), value.substring(index + 2).trim()};
-    }
-
-    private static LocalDate parseDate(String value) {
-        try {
-            return LocalDate.parse(value);
-        } catch (DateTimeParseException ex) {
-            throw new FilterNotFound("Invalid filter date: " + value);
-        }
+        return PagePredicates.dateTimeRange(cb, root.get(attribute), value);
     }
 
     private static UUID parseUuid(String value, String key) {

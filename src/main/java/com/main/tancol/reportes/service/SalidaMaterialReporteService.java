@@ -6,6 +6,7 @@ import com.main.tancol.almacen.entities.UnidadesMedidaEntity;
 import com.main.tancol.almacen.entities.partidas.PartidaOrdenInternaEntity;
 import com.main.tancol.almacen.enums.EstadoOrdenInterna;
 import com.main.tancol.almacen.repositories.PartidaOrdenInternaRepository;
+import com.main.tancol.common.util.RangoFechas;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
 import com.main.tancol.reportes.dto.request.ReporteSalidaMaterialRequestDTO;
@@ -126,11 +127,12 @@ public class SalidaMaterialReporteService {
                     cb.notEqual(orden.get("estadoOrdenInterna"), EstadoOrdenInterna.BORRADOR)
             ));
 
-            if (filtro.getFechaInicio() != null) {
-                predicados.add(cb.greaterThanOrEqualTo(orden.get("fechaElaboracion"), filtro.getFechaInicio()));
+            RangoFechas rango = RangoFechas.of(filtro.getFechaInicio(), filtro.getFechaFin());
+            if (rango.inicio() != null) {
+                predicados.add(cb.greaterThanOrEqualTo(orden.get("fechaElaboracion"), rango.inicio()));
             }
-            if (filtro.getFechaFin() != null) {
-                predicados.add(cb.lessThanOrEqualTo(orden.get("fechaElaboracion"), filtro.getFechaFin()));
+            if (rango.fin() != null) {
+                predicados.add(cb.lessThanOrEqualTo(orden.get("fechaElaboracion"), rango.fin()));
             }
             predicadoAreas(filtro.getAreas(), orden, cb, predicados);
             if (tieneValores(filtro.getIdEmpleados())) {

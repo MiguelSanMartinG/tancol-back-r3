@@ -1,5 +1,6 @@
 package com.main.tancol.dashboard.service;
 
+import com.main.tancol.common.util.RangoFechas;
 import com.main.tancol.dashboard.config.DashboardKpiProperties;
 import com.main.tancol.dashboard.dto.request.DashboardKpiFilter;
 import com.main.tancol.dashboard.dto.response.ClienteMasEquiposResponseDTO;
@@ -160,6 +161,7 @@ public class DashboardKpiService {
     }
 
     private DashboardPeriodo requirePeriodo(DashboardKpiFilter filter) {
+        RangoFechas.validar(filter.getFechaInicio(), filter.getFechaFin());
         try {
             return DashboardPeriodo.of(filter.getFechaInicio(), filter.getFechaFin());
         } catch (IllegalArgumentException ex) {

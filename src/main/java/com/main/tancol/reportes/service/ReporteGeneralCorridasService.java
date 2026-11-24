@@ -1,5 +1,6 @@
 package com.main.tancol.reportes.service;
 
+import com.main.tancol.common.util.RangoFechas;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.repositories.EmpleadosRepository;
 import com.main.tancol.reportes.dto.response.ReporteGeneralCorridasFilaResponseDTO;
@@ -61,25 +62,23 @@ public class ReporteGeneralCorridasService {
     }
 
     private ReporteGeneralCorridasResponseDTO ejecutar(String scriptClasspath, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
-        validarRango(fechaInicio, fechaFin);
+        RangoFechas rango = validarRango(fechaInicio, fechaFin);
         String sql = cargarSql(scriptClasspath);
 
         Query query = entityManager.createNativeQuery(sql, Tuple.class);
-        query.setParameter("fechaInicio", fechaInicio);
-        query.setParameter("fechaFin", fechaFin);
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
 
         @SuppressWarnings("unchecked")
         List<Tuple> tuples = query.getResultList();
         return construirRespuesta(tuples);
     }
 
-    private void validarRango(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+    private RangoFechas validarRango(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         if (fechaInicio == null || fechaFin == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fechaInicio y fechaFin son obligatorias");
         }
-        if (fechaFin.isBefore(fechaInicio)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fechaFin no puede ser anterior a fechaInicio");
-        }
+        return RangoFechas.of(fechaInicio, fechaFin);
     }
 
     private String cargarSql(String classpath) {

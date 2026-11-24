@@ -1,5 +1,6 @@
 package com.main.tancol.reportes.service;
 
+import com.main.tancol.common.util.RangoFechas;
 import com.main.tancol.logistica.enums.TipoProceso;
 import com.main.tancol.reportes.dto.request.ReporteBitacorasVentasRequestDTO;
 import com.main.tancol.reportes.dto.response.ReporteBitacorasVentasResponseDTO;
@@ -27,11 +28,12 @@ public class BitacoraVentaReporteService {
     private final EntityManager entityManager;
 
     public List<ReporteBitacorasVentasResponseDTO> getBitacorasVentas(ReporteBitacorasVentasRequestDTO filtro) {
+        RangoFechas rango = RangoFechas.of(filtro.getFechaInicio(), filtro.getFechaFin());
         Query query = entityManager.createNativeQuery(
                 "SELECT * FROM get_bitacoras_ventas(:fechaInicio,:fechaFin,:folio,:rutas,:procesos,:choferes,:ayudantes,:productos,:vehiculos,:fechaFirma,:rotos,:fueraEspecificacion,:rotoPorMaquina)");
 
-        query.setParameter("fechaInicio", filtro.getFechaInicio());
-        query.setParameter("fechaFin", filtro.getFechaFin());
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
         query.setParameter("folio", blankToNull(filtro.getFolio()));
         query.setParameter("rutas", toUuidArray(filtro.getIdRutas()));
         query.setParameter("procesos", toProcesoArray(filtro.getProcesos()));
