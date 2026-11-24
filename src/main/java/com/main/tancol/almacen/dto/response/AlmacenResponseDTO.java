@@ -19,6 +19,8 @@ public class AlmacenResponseDTO implements Serializable {
     UUID id;
     String nombre;
     Boolean status;
+    UUID idResponsable;
+    String responsableNombre;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 

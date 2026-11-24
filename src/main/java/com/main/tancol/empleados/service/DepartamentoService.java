@@ -28,15 +28,19 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DepartamentoService implements IDepartamentoService {
     private final DepartamentoRepository repository;
+    private final com.main.tancol.almacen.repositories.AlmacenRepository almacenRepository;
 
-    public DepartamentoService(DepartamentoRepository departamentoRepository) {
+    public DepartamentoService(DepartamentoRepository departamentoRepository,
+                               com.main.tancol.almacen.repositories.AlmacenRepository almacenRepository) {
 
         this.repository = departamentoRepository;
+        this.almacenRepository = almacenRepository;
     }
 
     @Override
     public DepartamentoResponseDTO create(DepartamentoRequestDTO dto) {
         DepartamentoEntity departamento = DepartamentoMapper.DepartamentoRequesToToEntity(dto);
+        departamento.setAlmacen(buscarAlmacen(dto.getIdAlmacen()));
         return DepartamentoMapper.DepartamentoEntityToResponseDTO(this.repository.save(departamento));
     }
 
@@ -80,7 +84,15 @@ public class DepartamentoService implements IDepartamentoService {
         query.setAlias(dto.getAlias());
         query.setDescripcion(dto.getDescripcion());
         query.setEnabled(dto.isEstado());
+        query.setAlmacen(buscarAlmacen(dto.getIdAlmacen()));
         return DepartamentoMapper.DepartamentoEntityToResponseDTO(this.repository.save(query));
+    }
+
+    private com.main.tancol.almacen.entities.AlmacenEntity buscarAlmacen(UUID idAlmacen) {
+        if (idAlmacen == null) return null;
+        return almacenRepository.findById(idAlmacen)
+                .filter(a -> !a.isDeleted())
+                .orElseThrow(() -> new IDNotFound("No se encontró el almacén"));
     }
 
     @Override

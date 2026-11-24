@@ -14,6 +14,8 @@ public class DepartamentoResponseDTO {
     private String nombre;
     private String alias;
     private String descripcion;
+    private UUID idAlmacen;
+    private String almacenNombre;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean status;

@@ -32,8 +32,12 @@ public class AlmacenService implements IAlmacenService {
 
     private final AlmacenRepository repository;
 
-    public AlmacenService(AlmacenRepository almacenRepository) {
+    private final com.main.tancol.empleados.repositories.EmpleadosRepository empleadosRepository;
+
+    public AlmacenService(AlmacenRepository almacenRepository,
+                          com.main.tancol.empleados.repositories.EmpleadosRepository empleadosRepository) {
         this.repository = almacenRepository;
+        this.empleadosRepository = empleadosRepository;
     }
 
     @Override
@@ -46,6 +50,7 @@ public class AlmacenService implements IAlmacenService {
 
         AlmacenEntity newAlmacen = AlmacenEntity.builder()
                 .nombre(almacen.getNombre())
+                .responsable(buscarResponsable(almacen.getIdResponsable()))
                 .build();
 
         return DepartamentoMapper.EntityToAlmacenResponseDTO(repository.save(newAlmacen));
@@ -68,8 +73,16 @@ public class AlmacenService implements IAlmacenService {
         // Actualizar solo los campos necesarios
         almacenExistente.setNombre(almacen.getNombre());
         almacenExistente.setEnabled(almacen.getStatus());
+        almacenExistente.setResponsable(buscarResponsable(almacen.getIdResponsable()));
         AlmacenEntity almacenActualizado = repository.save(almacenExistente);
         return DepartamentoMapper.EntityToAlmacenResponseDTO(almacenActualizado);
+    }
+
+    private com.main.tancol.empleados.entities.EmpleadosEntity buscarResponsable(UUID idResponsable) {
+        if (idResponsable == null) return null;
+        return empleadosRepository.findById(idResponsable)
+                .filter(e -> !e.isDeleted())
+                .orElseThrow(() -> new IDNotFound("No se encontró el empleado responsable del almacén"));
     }
 
     @Override

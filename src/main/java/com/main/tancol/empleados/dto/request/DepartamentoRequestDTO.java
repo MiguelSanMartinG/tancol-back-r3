@@ -11,4 +11,6 @@ public class DepartamentoRequestDTO {
      String alias;
      String descripcion;
      boolean estado;
+     /** Almacén asignado al área (opcional). */
+     java.util.UUID idAlmacen;
 }

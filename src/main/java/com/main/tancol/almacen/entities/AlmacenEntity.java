@@ -30,6 +30,12 @@ public class AlmacenEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.NVARCHAR)
     private String nombre;
 
+    /** Responsable del almacén: recibe las notificaciones del inventario diario. */
+    @ToString.Exclude
+    @ManyToOne
+    @JoinColumn(name = "responsable_id")
+    private com.main.tancol.empleados.entities.EmpleadosEntity responsable;
+
     @ToString.Exclude
     @OneToMany(mappedBy = "almacen", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InventarioEntity> inventario = new ArrayList<>();

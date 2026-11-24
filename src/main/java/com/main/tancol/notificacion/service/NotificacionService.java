@@ -85,6 +85,11 @@ public class NotificacionService implements INotificacionService {
         return destinatariosDe(TipoNotificacion.VIGENCIA_EMPLEADO_POR_VENCER);
     }
 
+    /** Empleados de los roles que tienen activo el tipo (y leen Notificaciones). */
+    public List<EmpleadosEntity> destinatariosPorTipo(TipoNotificacion tipo) {
+        return destinatariosDe(tipo);
+    }
+
     /**
      * Aviso de vigencia por vencer de un empleado temporal o practicante. No se repite para la
      * misma vigencia: si ya se avisó desde {@code desde}, no crea otra.

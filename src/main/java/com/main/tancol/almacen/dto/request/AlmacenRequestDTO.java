@@ -14,4 +14,6 @@ public class AlmacenRequestDTO implements Serializable {
     @NotBlank(message = "El nombre no puede estar vacio.")
     String nombre;
     Boolean status;
+    /** Responsable del almacén (empleado, opcional). */
+    java.util.UUID idResponsable;
 }

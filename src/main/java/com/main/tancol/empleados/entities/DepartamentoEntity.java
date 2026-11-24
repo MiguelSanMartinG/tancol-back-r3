@@ -41,6 +41,12 @@ public class DepartamentoEntity extends BaseEntity {
     private String descripcion;
 
 
+    /** Almacén asignado al área (de ahí salen sus tarjetas del inventario diario). */
+    @ManyToOne
+    @JoinColumn(name = "almacen_id")
+    @lombok.ToString.Exclude
+    private com.main.tancol.almacen.entities.AlmacenEntity almacen;
+
     @OneToMany(mappedBy = "departamento", orphanRemoval = true)
     private List<EmpleadosEntity> empleadosEntities = new ArrayList<>();
 

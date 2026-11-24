@@ -23,6 +23,10 @@ public class DepartamentoMapper {
                 .id(dto.getId())
                 .nombre(dto.getNombre())
                 .status(dto.isEnabled())
+                .idResponsable(dto.getResponsable() != null ? dto.getResponsable().getId() : null)
+                .responsableNombre(dto.getResponsable() == null ? null : java.util.stream.Stream.of(
+                                dto.getResponsable().getNombre(), dto.getResponsable().getPrimerApellido(), dto.getResponsable().getSegundoApellido())
+                        .filter(s -> s != null && !s.isBlank()).collect(java.util.stream.Collectors.joining(" ")))
                 .createdAt(dto.getCreatedAt())
                 .updatedAt(dto.getUpdatedAt())
                 .build();
@@ -65,6 +69,8 @@ public class DepartamentoMapper {
                 .nombre(dto.getNombre())
                 .descripcion(dto.getDescripcion())
                 .alias(dto.getAlias())
+                .idAlmacen(dto.getAlmacen() != null ? dto.getAlmacen().getId() : null)
+                .almacenNombre(dto.getAlmacen() != null ? dto.getAlmacen().getNombre() : null)
                 .createdAt(dto.getCreatedAt())
                 .updatedAt(dto.getUpdatedAt())
                 .status(dto.isEnabled())
