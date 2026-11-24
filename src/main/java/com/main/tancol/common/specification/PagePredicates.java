@@ -1,6 +1,7 @@
 package com.main.tancol.common.specification;
 
 import com.main.tancol.common.exceptions.exeption.FilterNotFound;
+import com.main.tancol.common.util.RangoFechas;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
@@ -8,6 +9,7 @@ import jakarta.persistence.criteria.Predicate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,14 +29,31 @@ public final class PagePredicates {
         return cb.like(cb.lower(path), contains(value));
     }
 
-    public static Predicate dateTimeRange(CriteriaBuilder cb, Path<java.time.LocalDateTime> path, String value) {
-        String[] parts = splitRange(value);
+    /** Rango 'desde..hasta' (ambos inclusive) sobre una columna TIMESTAMP; admite fecha sola o fecha-hora. */
+    public static Predicate dateTimeRange(CriteriaBuilder cb, Expression<LocalDateTime> path, String value) {
+        RangoFechas rango = rangoFechas(value);
         List<Predicate> predicates = new ArrayList<>();
-        if (!parts[0].isBlank()) {
-            predicates.add(cb.greaterThanOrEqualTo(path, parseDate(parts[0]).atStartOfDay()));
+        if (rango.inicio() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(path, rango.inicio()));
         }
-        if (!parts[1].isBlank()) {
-            predicates.add(cb.lessThan(path, parseDate(parts[1]).plusDays(1).atStartOfDay()));
+        if (rango.fin() != null) {
+            predicates.add(cb.lessThanOrEqualTo(path, rango.fin()));
+        }
+        if (predicates.isEmpty()) {
+            return cb.conjunction();
+        }
+        return cb.and(predicates.toArray(Predicate[]::new));
+    }
+
+    /** Rango 'desde..hasta' (ambos inclusive) sobre una columna DATE; de una fecha-hora solo cuenta el dia. */
+    public static Predicate dateRange(CriteriaBuilder cb, Expression<LocalDate> path, String value) {
+        RangoFechas rango = rangoFechas(value);
+        List<Predicate> predicates = new ArrayList<>();
+        if (rango.inicio() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(path, rango.inicio().toLocalDate()));
+        }
+        if (rango.fin() != null) {
+            predicates.add(cb.lessThanOrEqualTo(path, rango.fin().toLocalDate()));
         }
         if (predicates.isEmpty()) {
             return cb.conjunction();
@@ -110,9 +129,10 @@ public final class PagePredicates {
         return new String[]{value.substring(0, index).trim(), value.substring(index + 2).trim()};
     }
 
-    private static LocalDate parseDate(String value) {
+    private static RangoFechas rangoFechas(String value) {
+        String[] parts = splitRange(value);
         try {
-            return LocalDate.parse(value);
+            return RangoFechas.parse(parts[0], parts[1]);
         } catch (DateTimeParseException ex) {
             throw new FilterNotFound("Invalid filter date: " + value);
         }

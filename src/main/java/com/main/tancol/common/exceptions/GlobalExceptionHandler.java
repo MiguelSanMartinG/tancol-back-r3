@@ -6,6 +6,7 @@ import com.main.tancol.common.exceptions.exeption.FilterNotFound;
 import com.main.tancol.common.exceptions.exeption.GenericExeption;
 import com.main.tancol.common.exeptions.IDNotFound;
 import com.main.tancol.common.exceptions.exeption.PropiedaDuplicada;
+import com.main.tancol.common.exceptions.exeption.RangoFechasInvalidoException;
 import com.main.tancol.common.exceptions.records.RestErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,6 +63,14 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(), exception.getMessage(), request.getRequestURI(), LocalDateTime.now());
         log.error("{}", response);
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler({RangoFechasInvalidoException.class})
+    public ResponseEntity<RestErrorResponse> handler(RangoFechasInvalidoException exception, HttpServletRequest request) {
+        var response = new RestErrorResponse(
+                HttpStatus.UNPROCESSABLE_ENTITY.value(), exception.getMessage(), request.getRequestURI(), LocalDateTime.now());
+        log.error("{}", response);
+        return new ResponseEntity<>(response, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     @ExceptionHandler({IDNotFound.class})

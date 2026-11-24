@@ -1,5 +1,6 @@
 package com.main.tancol.reportes.service;
 
+import com.main.tancol.common.util.RangoFechas;
 import com.main.tancol.liquidacion.enums.FormaPagoLiquidacion;
 import com.main.tancol.reportes.dto.response.*;
 import jakarta.persistence.EntityManager;
@@ -33,8 +34,9 @@ public class LiquidacionReporteService {
         query.setParameter("clientes", clientes != null && !clientes.isEmpty() ? clientes.toArray(UUID[]::new) : null);
         query.setParameter("rutas", rutas != null && !rutas.isEmpty() ? rutas.toArray(UUID[]::new) : null);
         query.setParameter("productos", productos != null && !productos.isEmpty() ? productos.toArray(UUID[]::new) : null);
-        query.setParameter("fechaInicio", fechaInicio);
-        query.setParameter("fechaFin", fechaFin);
+        RangoFechas rango = RangoFechas.of(fechaInicio, fechaFin);
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
         query.setParameter("conceptosVenta", conceptosVenta != null && !conceptosVenta.isEmpty() ? conceptosVenta.toArray(UUID[]::new) : null);
         query.setParameter("facturado", facturado);
         query.setParameter("tiposPago", tipoPago != null && !tipoPago.isEmpty() ? tipoPago.stream().map(FormaPagoLiquidacion::toString).toArray(String[]::new) : null);
@@ -77,8 +79,9 @@ public class LiquidacionReporteService {
         query.setParameter("clientes", clientes != null && !clientes.isEmpty() ? clientes.toArray(UUID[]::new) : null);
         query.setParameter("rutas", rutas != null && !rutas.isEmpty() ? rutas.toArray(UUID[]::new) : null);
         query.setParameter("productos", productos != null && !productos.isEmpty() ? productos.toArray(UUID[]::new) : null);
-        query.setParameter("fechaInicio", fechaInicio);
-        query.setParameter("fechaFin", fechaFin);
+        RangoFechas rango = RangoFechas.of(fechaInicio, fechaFin);
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
         query.setParameter("conceptosVenta", conceptosVenta != null && !conceptosVenta.isEmpty() ? conceptosVenta.toArray(UUID[]::new) : null);
         query.setParameter("tiposPago", tipoPago != null && !tipoPago.isEmpty() ? tipoPago.stream().map(FormaPagoLiquidacion::toString).toArray(String[]::new) : null);
         query.setParameter("estadoLiquidado", estadoLiquidado);
@@ -141,8 +144,9 @@ public class LiquidacionReporteService {
         query.setParameter("empleados", empleados != null && !empleados.isEmpty() ? empleados.toArray(UUID[]::new) : null);
         query.setParameter("productos", productos != null && !productos.isEmpty() ? productos.toArray(UUID[]::new) : null);
         query.setParameter("rutas", rutas != null && !rutas.isEmpty() ? rutas.toArray(UUID[]::new) : null);
-        query.setParameter("fechaInicio", fechaInicio);
-        query.setParameter("fechaFin", fechaFin);
+        RangoFechas rango = RangoFechas.of(fechaInicio, fechaFin);
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
 
         List<Object[]> resultado = query.getResultList();
         return resultado.stream().map(row -> new ReporteVolumenVentasResponseDTO(
@@ -168,8 +172,9 @@ public class LiquidacionReporteService {
         query.setParameter("rutas", rutas != null && !rutas.isEmpty() ? rutas.toArray(UUID[]::new) : null);
         query.setParameter("conceptosVenta", conceptosVenta != null && !conceptosVenta.isEmpty() ? conceptosVenta.toArray(UUID[]::new) : null);
         query.setParameter("facturado", facturado);
-        query.setParameter("fechaInicio", fechaInicio);
-        query.setParameter("fechaFin", fechaFin);
+        RangoFechas rango = RangoFechas.of(fechaInicio, fechaFin);
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
 
         List<Object[]> resultado = query.getResultList();
         return resultado.stream().map(row -> new ReporteVVEDiaResponseDTO(
@@ -189,8 +194,9 @@ public class LiquidacionReporteService {
                 "SELECT * FROM get_ventas_clientes(:clientes,:productos,:fechaInicio,:fechaFin)");
         query.setParameter("clientes", clientes != null && !clientes.isEmpty() ? clientes.toArray(UUID[]::new) : null);
         query.setParameter("productos", productos != null && !productos.isEmpty() ? productos.toArray(UUID[]::new) : null);
-        query.setParameter("fechaInicio", fechaInicio);
-        query.setParameter("fechaFin", fechaFin);
+        RangoFechas rango = RangoFechas.of(fechaInicio, fechaFin);
+        query.setParameter("fechaInicio", rango.inicio());
+        query.setParameter("fechaFin", rango.fin());
 
         List<Object[]> resultado = query.getResultList();
         return resultado.stream().map(row -> new ReporteTotalizadoClienteResponseDTO(

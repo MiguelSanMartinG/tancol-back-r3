@@ -10,16 +10,13 @@ import com.main.tancol.producto.entities.insumos.CategoriaProductoEntity;
 import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +81,7 @@ public class InventarioPageSpecification implements Specification<InventarioEnti
                 case "cantidad" -> PagePredicates.decimalRange(cb, root.get("cantidad"), value);
                 case "createdAt" -> PagePredicates.dateTimeRange(cb, root.get("createdAt"), value);
                 // La tabla muestra "updatedAt || createdAt": el filtro usa lo mismo.
-                case "updatedAt" -> dateTimeRange(cb,
+                case "updatedAt" -> PagePredicates.dateTimeRange(cb,
                         cb.coalesce(root.<LocalDateTime>get("updatedAt"), root.<LocalDateTime>get("createdAt")), value);
                 default -> throw new FilterNotFound("Invalid filter: filter_" + key);
             });
@@ -101,28 +98,6 @@ public class InventarioPageSpecification implements Specification<InventarioEnti
         }
         Join<CategoriaProductoEntity, CategoriaProductoEntity> padre = categoria.join("categoriaPadre", JoinType.LEFT);
         return PagePredicates.like(cb, padre.get("nombre"), value);
-    }
-
-    private static Predicate dateTimeRange(CriteriaBuilder cb, Expression<LocalDateTime> expr, String value) {
-        int index = value.indexOf("..");
-        String from = index < 0 ? value.trim() : value.substring(0, index).trim();
-        String to = index < 0 ? "" : value.substring(index + 2).trim();
-        List<Predicate> predicates = new ArrayList<>();
-        if (!from.isBlank()) {
-            predicates.add(cb.greaterThanOrEqualTo(expr, parseDate(from).atStartOfDay()));
-        }
-        if (!to.isBlank()) {
-            predicates.add(cb.lessThan(expr, parseDate(to).plusDays(1).atStartOfDay()));
-        }
-        return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(Predicate[]::new));
-    }
-
-    private static LocalDate parseDate(String value) {
-        try {
-            return LocalDate.parse(value.length() > 10 ? value.substring(0, 10) : value);
-        } catch (DateTimeParseException ex) {
-            throw new FilterNotFound("Invalid filter date: " + value);
-        }
     }
 
     private static boolean isCountQuery(CriteriaQuery<?> query) {

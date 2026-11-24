@@ -44,7 +44,7 @@ public interface EmpleadoTotalizadoLiquidacionRepository extends CrudRepository<
               AND l.deleted = false
               AND l.estadosLiquidacion = com.main.tancol.liquidacion.enums.EstadosLiquidacion.FINALIZADA
               AND l.fecha >= :inicio
-              AND l.fecha < :fin
+              AND l.fecha <= :fin
             GROUP BY e.id, e.nombre, e.primerApellido, e.segundoApellido, p.id, p.nombre, p.alias
             """)
     List<VentaEmpleadoProductoAgg> sumarVentasPorEmpleadoYProducto(@Param("productoIds") Collection<UUID> productoIds,

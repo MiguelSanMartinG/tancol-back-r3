@@ -8,15 +8,12 @@ import com.main.tancol.logistica.enums.EstatusBitacoraVenta;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +67,7 @@ public class BitacoraVentaPageSpecification implements Specification<BitacoraVen
     private Predicate predicateFor(Root<BitacoraVentaRutaEntity> root, CriteriaQuery<?> query, CriteriaBuilder cb,
                                    String key, String value) {
         return switch (key) {
-            case "fecha" -> dateRange(cb, root.get("fecha"), value);
+            case "fecha" -> PagePredicates.dateRange(cb, root.get("fecha"), value);
             case "createdAt" -> PagePredicates.dateTimeRange(cb, root.get("createdAt"), value);
             case "updatedAt" -> PagePredicates.dateTimeRange(cb, root.get("updatedAt"), value);
             case "folio" -> PagePredicates.like(cb, root.get("folio"), value);
@@ -90,19 +87,6 @@ public class BitacoraVentaPageSpecification implements Specification<BitacoraVen
     private static boolean isCountQuery(CriteriaQuery<?> query) {
         Class<?> type = query.getResultType();
         return Long.class.equals(type) || long.class.equals(type);
-    }
-
-    /** Rango 'desde..hasta' (ambos inclusive) sobre una columna DATE. */
-    private static Predicate dateRange(CriteriaBuilder cb, Path<LocalDate> path, String value) {
-        String[] parts = splitRange(value);
-        List<Predicate> predicates = new ArrayList<>();
-        if (!parts[0].isBlank()) {
-            predicates.add(cb.greaterThanOrEqualTo(path, parseDate(parts[0])));
-        }
-        if (!parts[1].isBlank()) {
-            predicates.add(cb.lessThanOrEqualTo(path, parseDate(parts[1])));
-        }
-        return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(Predicate[]::new));
     }
 
     private static Predicate longRange(CriteriaBuilder cb, Expression<Long> expr, String value) {
@@ -136,14 +120,6 @@ public class BitacoraVentaPageSpecification implements Specification<BitacoraVen
             return new String[]{value.trim(), ""};
         }
         return new String[]{value.substring(0, index).trim(), value.substring(index + 2).trim()};
-    }
-
-    private static LocalDate parseDate(String value) {
-        try {
-            return LocalDate.parse(value);
-        } catch (DateTimeParseException ex) {
-            throw new FilterNotFound("Invalid filter date: " + value);
-        }
     }
 
     private static long parseLong(String value) {

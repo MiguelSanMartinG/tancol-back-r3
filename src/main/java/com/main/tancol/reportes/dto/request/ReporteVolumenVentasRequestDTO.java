@@ -1,5 +1,7 @@
 package com.main.tancol.reportes.dto.request;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.main.tancol.common.util.RangoFechasDeserializer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +21,8 @@ public class ReporteVolumenVentasRequestDTO {
     private List<UUID> idRutas;
     private List<UUID> conceptosVenta;
     private Boolean facturado;
+    @JsonDeserialize(using = RangoFechasDeserializer.Inicio.class)
     private LocalDateTime fechaInicio;
+    @JsonDeserialize(using = RangoFechasDeserializer.Fin.class)
     private LocalDateTime fechaFin;
 }

@@ -1,5 +1,6 @@
 package com.main.tancol.reportes.service;
 
+import com.main.tancol.common.util.RangoFechas;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.metaventa.entities.MetaVentaEmpleadoEntity;
 import com.main.tancol.metaventa.repositories.MetaVentaEmpleadoRepository;
@@ -45,8 +46,9 @@ public class ReporteVentasEmpleadosMetasService {
     public List<ReporteVentasEmpleadosMetasResponseDTO> generar(ReporteVentasEmpleadosMetasRequestDTO filtro) {
         validar(filtro);
         List<UUID> productos = filtro.getIdProductos().stream().filter(Objects::nonNull).distinct().toList();
-        LocalDateTime inicio = filtro.getFechaInicio();
-        LocalDateTime fin = filtro.getFechaFin();
+        RangoFechas rango = RangoFechas.of(filtro.getFechaInicio(), filtro.getFechaFin());
+        LocalDateTime inicio = rango.inicio();
+        LocalDateTime fin = rango.fin();
 
         Map<Clave, MetaVentaEmpleadoEntity> metas = new HashMap<>();
         for (MetaVentaEmpleadoEntity meta : metaRepository.findVigentesPorProductos(productos, inicio, fin)) {
@@ -94,9 +96,7 @@ public class ReporteVentasEmpleadosMetasService {
         if (filtro == null || filtro.getFechaInicio() == null || filtro.getFechaFin() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fechaInicio y fechaFin son obligatorias");
         }
-        if (!filtro.getFechaFin().isAfter(filtro.getFechaInicio())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fechaFin debe ser posterior a fechaInicio");
-        }
+        RangoFechas.validar(filtro.getFechaInicio(), filtro.getFechaFin());
         if (Duration.between(filtro.getFechaInicio(), filtro.getFechaFin()).compareTo(Duration.ofDays(DIAS_MAXIMOS)) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El rango de fechas no puede superar 8 días");
         }
