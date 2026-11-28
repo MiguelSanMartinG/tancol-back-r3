@@ -25,6 +25,7 @@ import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,10 +49,11 @@ import java.util.stream.Stream;
  * Inventario diario de insumos y solicitudes de stock (Buzón 1, 2 y 3).
  * <p>
  * El inventario físico vive solo en el almacén. Cada área (departamento) tiene un cupo diario por
- * insumo. Las partidas descuentan del cupo del día y de la existencia del almacén en la misma
- * transacción; una solicitud de stock recibida amplía el cupo del día (no mueve existencia: la
- * existencia solo la mueven las partidas, para no descontar dos veces). El día se cierra a las
- * 23:59:59 hora de México: al día siguiente no hay cupo hasta confirmar.
+ * insumo. Las partidas descuentan del cupo del día y de la existencia del almacén al firmarse, en
+ * la misma transacción; lo registrado sin firma solo cuenta para no pasarse del cupo. Una solicitud
+ * de stock recibida amplía el cupo del día (no mueve existencia: la existencia solo la mueven las
+ * partidas, para no descontar dos veces). Sin confirmación: cada día inicia con la base de la
+ * tarjeta (hora de México). La confirmación del día queda solo por compatibilidad.
  */
 @Service
 @RequiredArgsConstructor
@@ -62,6 +64,10 @@ public class InventarioDiarioService {
     static final String PERMISO_AREA = "RESPONSABLE_AREA";
     static final String PERMISO_ALMACEN = "RESPONSABLE_ALMACEN";
     private static final Set<EstatusSolicitud> ABIERTAS = EnumSet.of(EstatusSolicitud.SOLICITADO, EstatusSolicitud.ACEPTADO);
+    /** Segundos que tiene el solicitante para ajustar cantidad y nota después de enviar. */
+    static final long SEGUNDOS_EDITAR_SOLICITUD = 120;
+    /** Id que no existe: «sin partida que excluir» en las consultas. */
+    private static final UUID SIN_ID = new UUID(0L, 0L);
     private static final Path FIRMAS = Paths.get("uploads");
     private static final Map<String, String> EXT_FIRMA = Map.of("image/png", ".png", "image/jpeg", ".jpg", "image/webp", ".webp");
     private static final Pattern NOMBRE_ARCHIVO = Pattern.compile("^[A-Za-z0-9._-]{1,300}$");
@@ -94,11 +100,16 @@ public class InventarioDiarioService {
                 .filter(d -> !d.isDeleted())
                 .sorted(Comparator.comparing(d -> Optional.ofNullable(d.getNombre()).orElse("")))
                 .map(this::toArea).toList();
+        Map<UUID, Long> totales = new HashMap<>();
+        for (Object[] fila : inventarioRepository.totalesPorAlmacen()) {
+            totales.put((UUID) fila[0], ((Number) fila[1]).longValue());
+        }
         List<Almacen> almacenes = todos(almacenRepository.findAll())
                 .filter(a -> !a.isDeleted())
                 .sorted(Comparator.comparing(a -> Optional.ofNullable(a.getNombre()).orElse("")))
                 .map(a -> new Almacen(a.getId(), a.getNombre(),
-                        a.getResponsable() != null ? a.getResponsable().getId() : null, nombre(a.getResponsable())))
+                        a.getResponsable() != null ? a.getResponsable().getId() : null, nombre(a.getResponsable()),
+                        totales.getOrDefault(a.getId(), 0L)))
                 .toList();
         List<Persona> empleados = todos(empleadosRepository.findAll())
                 .filter(e -> !e.isDeleted() && e.isEnabled())
@@ -151,7 +162,7 @@ public class InventarioDiarioService {
         sembrarPorDefecto(area);
         LocalDate dia = fecha != null ? fecha : hoy();
         return cupoRepository.findByArea_IdAndDeletedFalseOrderByPorDefectoDescCreatedAtAsc(areaId).stream()
-                .map(c -> toCupo(c, cupoDiaRepository.findByCupo_IdAndFecha(c.getId(), dia).orElse(null)))
+                .map(c -> toCupo(c, dia))
                 .toList();
     }
 
@@ -160,6 +171,7 @@ public class InventarioDiarioService {
         DepartamentoEntity area = area(dto.areaId());
         exigirResponsableArea(area);
         AlmacenEntity almacen = almacen(dto.almacenId());
+        exigirAlmacenPermitido(almacen);
         validarBaseMinimo(dto.base(), dto.minimo());
         InventarioEntity inv = inventarioRepository.existencia(almacen.getId(), dto.insumoId())
                 .orElseThrow(() -> new GenericExeption("El insumo no está registrado en el inventario de ese almacén."));
@@ -168,16 +180,11 @@ public class InventarioDiarioService {
         }
         CupoEntity cupo = cupoRepository.save(CupoEntity.builder()
                 .area(area).almacen(almacen).insumo(inv.getProductoBasicoEntity())
-                .porDefecto(false).base(dto.base()).minimo(dto.minimo()).build());
-        CupoDiaEntity dia = null;
-        if (confirmado(area.getId(), hoy())) {
-            BigDecimal inicial = dto.base().min(cero(inv.getCantidad()).max(BigDecimal.ZERO));
-            dia = cupoDiaRepository.save(nuevoDia(cupo, hoy(), inicial, dto.base().subtract(inicial)));
-        }
-        return toCupo(cupo, dia);
+                .porDefecto(false).base(dto.base()).minimo(dto.minimo()).creadoPor(empleadoActual()).build());
+        return toCupo(cupo, hoy());
     }
 
-    /** La nueva base aplica desde hoy si alcanza el almacén. */
+    /** La nueva base aplica desde hoy. */
     @Transactional
     public Cupo editarCupo(UUID id, CupoEditar dto) {
         CupoEntity cupo = cupo(id);
@@ -186,23 +193,24 @@ public class InventarioDiarioService {
         cupo.setBase(dto.base());
         cupo.setMinimo(dto.minimo());
         cupoRepository.save(cupo);
-        CupoDiaEntity dia = cupoDiaRepository.findByCupo_IdAndFecha(cupo.getId(), hoy()).orElse(null);
-        if (dia != null) {
-            BigDecimal tope = existencia(cupo.getAlmacen().getId(), cupo.getInsumo().getId()).add(dia.getConsumido());
-            BigDecimal inicial = dto.base().min(tope.max(BigDecimal.ZERO));
-            dia.setInicial(inicial);
-            dia.setFaltante(dto.base().subtract(inicial).max(BigDecimal.ZERO));
+        cupoDiaRepository.findByCupo_IdAndFecha(cupo.getId(), hoy()).ifPresent(dia -> {
+            dia.setInicial(dto.base());
+            dia.setFaltante(BigDecimal.ZERO);
             cupoDiaRepository.save(dia);
-        }
-        return toCupo(cupo, dia);
+        });
+        return toCupo(cupo, hoy());
     }
 
+    /** Solo quien agregó la tarjeta la elimina; las tarjetas por defecto no se eliminan. */
     @Transactional
     public void eliminarCupo(UUID id) {
         CupoEntity cupo = cupo(id);
-        exigirResponsableArea(cupo.getArea());
         if (cupo.isPorDefecto()) {
             throw new GenericExeption("Las tarjetas por defecto del área no se pueden eliminar.");
+        }
+        EmpleadosEntity yo = empleadoActual();
+        if (cupo.getCreadoPor() == null || !cupo.getCreadoPor().getId().equals(yo.getId())) {
+            throw new AccessDeniedException("Solo quien agregó la tarjeta la puede eliminar.");
         }
         cupo.setDeleted(true);
         cupoRepository.save(cupo);
@@ -278,12 +286,10 @@ public class InventarioDiarioService {
         return partidaRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "fecha")).stream().map(this::toPartida).toList();
     }
 
+    /** Se registra sin descontar: descuenta al firmarse. Lo pendiente de firma sí cuenta para no pasarse del cupo. */
     @Transactional
     public Partida crearPartida(PartidaCrear dto) {
         DepartamentoEntity area = area(dto.areaId());
-        if (!confirmado(area.getId(), hoy())) {
-            throw new GenericExeption("Primero confirma el cupo del día.");
-        }
         validarCantidad(dto.cantidad());
         if (dto.concepto() == null) throw new GenericExeption("Elige el concepto de entrega.");
         CupoEntity cupo = cupoRepository.findFirstByArea_IdAndInsumo_IdAndDeletedFalse(area.getId(), dto.insumoId())
@@ -293,17 +299,21 @@ public class InventarioDiarioService {
                 .folio(String.format("IDI-%05d", partidaRepository.siguienteFolio()))
                 .fecha(ahora()).area(area).insumo(cupo.getInsumo()).cantidad(dto.cantidad())
                 .concepto(dto.concepto()).comentario(texto(dto.comentario()))
-                .ruta(ruta(dto.rutaId())).usuario(usuario).build();
+                .ruta(ruta(dto.rutaId())).usuario(usuario).descontado(false).build();
         aplicarRotoPor(p, dto.concepto(), dto.rotoPor());
-        moverCupo(cupo, hoy(), dto.cantidad(), BigDecimal.ZERO);
+        validarCupoLibre(cupo, hoy(), dto.cantidad(), null);
         return toPartida(partidaRepository.save(p));
     }
 
-    /** Solo sin firma. Regresa lo anterior al cupo/almacén y descuenta lo nuevo. */
+    /**
+     * Solo sin firma y del mismo día. Las partidas anteriores al 27-11 ya se habían descontado al
+     * guardarse: en esas se regresa lo anterior al cupo/almacén y se descuenta lo nuevo, como antes.
+     */
     @Transactional
     public Partida editarPartida(UUID id, PartidaEditar dto) {
         PartidaEntity p = partida(id);
         if (p.getIdImagenFirma() != null) throw new GenericExeption("La partida ya está firmada.");
+        exigirDeHoy(p, "editar");
         LocalDate dia = p.getFecha().toLocalDate();
         CupoEntity anterior = cupoDe(p.getArea(), p.getInsumo().getId());
         BigDecimal cantidadAnterior = p.getCantidad();
@@ -311,7 +321,9 @@ public class InventarioDiarioService {
         BigDecimal cantidadNueva = dto.cantidad() != null ? dto.cantidad() : cantidadAnterior;
         validarCantidad(cantidadNueva);
         CupoEntity nuevo = cupoDe(p.getArea(), insumoNuevo);
-        if (nuevo.getId().equals(anterior.getId())) {
+        if (!p.isDescontado()) {
+            validarCupoLibre(nuevo, dia, cantidadNueva, p.getId());
+        } else if (nuevo.getId().equals(anterior.getId())) {
             moverCupo(nuevo, dia, cantidadNueva, cantidadAnterior);
         } else {
             moverCupo(anterior, dia, BigDecimal.ZERO, cantidadAnterior);
@@ -330,26 +342,40 @@ public class InventarioDiarioService {
         return toPartida(partidaRepository.save(p));
     }
 
-    /** Elimina las partidas sin firma; su cantidad regresa al cupo y al almacén. */
+    /**
+     * Elimina las partidas sin firma del mismo día. Si ya se habían descontado (anteriores al 27-11),
+     * su cantidad regresa al cupo y al almacén; las demás no habían descontado nada.
+     */
     @Transactional
     public Eliminadas eliminarPartidas(Ids dto) {
-        int n = 0;
-        for (UUID id : Optional.ofNullable(dto.ids()).orElse(List.of())) {
-            PartidaEntity p = partidaRepository.findById(id).filter(x -> !x.isDeleted()).orElse(null);
-            if (p == null || p.getIdImagenFirma() != null) continue;
-            CupoEntity cupo = cupoDe(p.getArea(), p.getInsumo().getId());
-            moverCupo(cupo, p.getFecha().toLocalDate(), BigDecimal.ZERO, p.getCantidad());
+        List<PartidaEntity> elegidas = Optional.ofNullable(dto.ids()).orElse(List.<UUID>of()).stream()
+                .map(id -> partidaRepository.findById(id).filter(x -> !x.isDeleted() && x.getIdImagenFirma() == null).orElse(null))
+                .filter(Objects::nonNull).toList();
+        elegidas.forEach(p -> exigirDeHoy(p, "eliminar"));
+        for (PartidaEntity p : elegidas) {
+            if (p.isDescontado()) {
+                CupoEntity cupo = cupoDe(p.getArea(), p.getInsumo().getId());
+                moverCupo(cupo, p.getFecha().toLocalDate(), BigDecimal.ZERO, p.getCantidad());
+            }
             p.setDeleted(true);
             partidaRepository.save(p);
-            n++;
         }
-        return new Eliminadas(n);
+        return new Eliminadas(elegidas.size());
     }
 
+    /**
+     * Al firmar se descuenta del cupo del día de la partida y de la existencia del almacén. Una partida
+     * de un día anterior se puede firmar después; el descuento cuenta al día de la partida.
+     */
     @Transactional
     public Partida firmarPartida(UUID id, MultipartFile archivo, String idImagenFirma) {
         PartidaEntity p = partida(id);
         if (p.getIdImagenFirma() != null) throw new GenericExeption("La partida ya está firmada.");
+        if (!p.isDescontado()) {
+            CupoEntity cupo = cupoDe(p.getArea(), p.getInsumo().getId());
+            descontarAlFirmar(cupo, p.getFecha().toLocalDate(), p.getCantidad());
+            p.setDescontado(true);
+        }
         p.setIdImagenFirma(guardarFirma(archivo, idImagenFirma));
         p.setFechaFirma(ahora());
         return toPartida(partidaRepository.save(p));
@@ -390,14 +416,14 @@ public class InventarioDiarioService {
         validarCantidad(dto.cantidad());
         CupoEntity cupo = cupoRepository.findFirstByArea_IdAndInsumo_IdAndDeletedFalse(area.getId(), dto.insumoId())
                 .orElseThrow(() -> new GenericExeption("El área no tiene tarjeta de este insumo."));
-        CupoDiaEntity dia = cupoDiaRepository.findByCupo_IdAndFecha(cupo.getId(), hoy())
-                .orElseThrow(() -> new GenericExeption("Confirma primero el cupo del día."));
         solicitudRepository.findFirstByArea_IdAndInsumo_IdAndEstatusInAndDeletedFalse(area.getId(), dto.insumoId(), ABIERTAS)
                 .ifPresent(s -> {
                     throw new GenericExeption("Ya hay una solicitud en curso (" + s.getFolio() + ").");
                 });
-        if (dia.disponible().compareTo(cupo.getMinimo()) > 0) {
-            throw new GenericExeption("Se habilita al llegar a " + num(cupo.getMinimo()) + " o menos.");
+        // Solo cuenta lo firmado: lo registrado sin firma aún no confirma que se necesite más stock.
+        BigDecimal firmadoLibre = valoresDia(cupo, hoy()).disponible();
+        if (firmadoLibre.compareTo(cupo.getMinimo()) > 0) {
+            throw new GenericExeption("Se habilita al llegar a " + num(cupo.getMinimo()) + " o menos (solo cuenta lo firmado).");
         }
         SolicitudStockEntity s = solicitudRepository.save(SolicitudStockEntity.builder()
                 .folio(String.format("SDS-%05d", solicitudRepository.siguienteFolio()))
@@ -418,6 +444,9 @@ public class InventarioDiarioService {
         SolicitudStockEntity s = solicitud(id);
         if (s.getIdImagenFirma() != null) throw new GenericExeption("La solicitud ya está firmada.");
         if (s.getEstatus() == EstatusSolicitud.SOLICITADO) {
+            if ((dto.cantidadSolicitada() != null || dto.nota() != null) && fueraDeTiempoParaEditar(s)) {
+                throw new GenericExeption("Ya no se puede editar: pasaron 2 minutos desde que se envió.");
+            }
             if (dto.cantidadSolicitada() != null) {
                 validarCantidad(dto.cantidadSolicitada());
                 s.setCantidadSolicitada(dto.cantidadSolicitada());
@@ -450,6 +479,7 @@ public class InventarioDiarioService {
             throw new GenericExeption("Solo se aceptan solicitudes en estatus Solicitado.");
         }
         validarCantidad(dto.cantidadAEntregar());
+        validarExistencia(s, dto.cantidadAEntregar());
         s.setEstatus(EstatusSolicitud.ACEPTADO);
         s.setCantidadAEntregar(dto.cantidadAEntregar());
         s.setCantidadRecibida(dto.cantidadAEntregar());
@@ -490,9 +520,9 @@ public class InventarioDiarioService {
         }
         BigDecimal cantidad = cantidadRecibida != null ? cantidadRecibida : s.getCantidadAEntregar();
         validarRecibida(s, cantidad);
+        validarExistencia(s, cantidad);
         CupoEntity cupo = cupoDe(s.getArea(), s.getInsumo().getId());
-        CupoDiaEntity dia = cupoDiaRepository.bloquear(cupo.getId(), hoy())
-                .orElseThrow(() -> new GenericExeption("Confirma primero el cupo del día para recibir el stock."));
+        CupoDiaEntity dia = diaBloqueado(cupo, hoy());
         dia.setAmpliado(dia.getAmpliado().add(cantidad));
         cupoDiaRepository.save(dia);
         s.setCantidadRecibida(cantidad);
@@ -500,6 +530,51 @@ public class InventarioDiarioService {
         s.setRecibidoPor(empleadoActual());
         s.setFechaRecepcion(ahora());
         s.setEstatus(EstatusSolicitud.RECIBIDO);
+        solicitudRepository.save(s);
+        // Si recibió menos de lo autorizado no se vuelve a autorizar: se avisa al almacén cuánto faltó.
+        if (s.getCantidadAEntregar() != null && cantidad.compareTo(s.getCantidadAEntregar()) < 0) {
+            notificar(destinatariosAlmacen(s.getAlmacen(), TipoNotificacion.DOTACION_INCOMPLETA), "Entrega incompleta",
+                    "El área " + s.getArea().getNombre() + " recibió " + num(cantidad) + " de " + num(s.getCantidadAEntregar())
+                            + " de " + s.getInsumo().getNombre() + " (" + s.getFolio() + ") del " + s.getAlmacen().getNombre()
+                            + ": faltaron " + num(s.getCantidadAEntregar().subtract(cantidad)) + ".",
+                    TipoNotificacion.DOTACION_INCOMPLETA);
+        }
+        return toSolicitud(s);
+    }
+
+    /** El solicitante no acepta lo entregado: no se suma al cupo, el insumo se queda en el almacén. */
+    @Transactional
+    public Solicitud declinar(UUID id, Declinar dto) {
+        SolicitudStockEntity s = solicitud(id);
+        if (s.getEstatus() != EstatusSolicitud.ACEPTADO || s.getIdImagenFirma() != null) {
+            throw new GenericExeption("Solo se declina una solicitud aceptada que aún no se firma de recibido.");
+        }
+        String motivo = texto(dto != null ? dto.motivo() : null);
+        s.setEstatus(EstatusSolicitud.DECLINADO);
+        s.setComentario(motivo);
+        s.setRecibidoPor(empleadoActual());
+        s.setFechaRecepcion(ahora());
+        solicitudRepository.save(s);
+        notificar(destinatariosAlmacen(s.getAlmacen(), TipoNotificacion.DOTACION_INCOMPLETA), "Entrega declinada",
+                "El área " + s.getArea().getNombre() + " declinó la entrega de " + s.getInsumo().getNombre()
+                        + " (" + s.getFolio() + ") del " + s.getAlmacen().getNombre() + "."
+                        + (motivo != null ? " Motivo: " + motivo + "." : ""),
+                TipoNotificacion.DOTACION_INCOMPLETA);
+        return toSolicitud(s);
+    }
+
+    /** Firma de entrega del responsable del almacén (en Aceptado o Recibido; una sola vez). */
+    @Transactional
+    public Solicitud firmarAlmacen(UUID id, MultipartFile archivo, String idImagenFirma) {
+        SolicitudStockEntity s = solicitud(id);
+        exigirResponsableAlmacen(s.getAlmacen());
+        if (s.getEstatus() != EstatusSolicitud.ACEPTADO && s.getEstatus() != EstatusSolicitud.RECIBIDO) {
+            throw new GenericExeption("El almacén firma la entrega de solicitudes aceptadas.");
+        }
+        if (s.getFirmaAlmacen() != null) throw new GenericExeption("El almacén ya firmó la entrega.");
+        s.setFirmaAlmacen(guardarFirma(archivo, idImagenFirma));
+        s.setFechaFirmaAlmacen(ahora());
+        s.setFirmadoAlmacenPor(empleadoActual());
         return toSolicitud(solicitudRepository.save(s));
     }
 
@@ -510,8 +585,7 @@ public class InventarioDiarioService {
      * {@code regresar}. Valida que lo nuevo no exceda el disponible ni la existencia.
      */
     private void moverCupo(CupoEntity cupo, LocalDate fecha, BigDecimal agregar, BigDecimal regresar) {
-        CupoDiaEntity dia = cupoDiaRepository.bloquear(cupo.getId(), fecha)
-                .orElseThrow(() -> new GenericExeption("No hay cupo confirmado para ese día."));
+        CupoDiaEntity dia = diaBloqueado(cupo, fecha);
         BigDecimal neto = agregar.subtract(regresar);
         if (neto.signum() > 0 && neto.compareTo(dia.disponible()) > 0) {
             BigDecimal libre = dia.disponible().add(regresar);
@@ -528,6 +602,90 @@ public class InventarioDiarioService {
         inv.setCantidad(existencia.subtract(neto));
         cupoDiaRepository.save(dia);
         inventarioRepository.save(inv);
+    }
+
+    /**
+     * Valida que {@code cantidad} quepa en el cupo del día contando lo firmado y lo pendiente de firma
+     * (sin la partida {@code excluir}, que se está editando). No mueve nada.
+     */
+    private void validarCupoLibre(CupoEntity cupo, LocalDate fecha, BigDecimal cantidad, UUID excluir) {
+        CupoDiaEntity dia = diaBloqueado(cupo, fecha);
+        BigDecimal libre = dia.disponible().subtract(pendiente(cupo, fecha, excluir));
+        if (cantidad.compareTo(libre) > 0) {
+            throw new GenericExeption("Supera el cupo disponible (" + num(libre.max(BigDecimal.ZERO)) + ").");
+        }
+    }
+
+    /** Firma: suma al consumo del día de la partida y descuenta la existencia del almacén. */
+    private void descontarAlFirmar(CupoEntity cupo, LocalDate fecha, BigDecimal cantidad) {
+        CupoDiaEntity dia = diaBloqueado(cupo, fecha);
+        InventarioEntity inv = inventarioRepository.bloquear(cupo.getAlmacen().getId(), cupo.getInsumo().getId())
+                .orElseThrow(() -> new GenericExeption("El insumo ya no está en el inventario del " + cupo.getAlmacen().getNombre() + "."));
+        BigDecimal existencia = cero(inv.getCantidad());
+        if (cantidad.compareTo(existencia) > 0) {
+            throw new GenericExeption("El " + cupo.getAlmacen().getNombre() + " solo tiene " + num(existencia) + " de "
+                    + cupo.getInsumo().getNombre() + ".");
+        }
+        dia.setConsumido(dia.getConsumido().add(cantidad));
+        inv.setCantidad(existencia.subtract(cantidad));
+        cupoDiaRepository.save(dia);
+        inventarioRepository.save(inv);
+    }
+
+    /** Cupo del día con bloqueo; si el día aún no se usa, se crea con la base de la tarjeta. */
+    private CupoDiaEntity diaBloqueado(CupoEntity cupo, LocalDate fecha) {
+        return cupoDiaRepository.bloquear(cupo.getId(), fecha)
+                .orElseGet(() -> cupoDiaRepository.saveAndFlush(nuevoDia(cupo, fecha, cupo.getBase(), BigDecimal.ZERO)));
+    }
+
+    /** Cupo del día para mostrar: el guardado o, si el día aún no se usa, la base (sin guardar). */
+    private CupoDiaEntity valoresDia(CupoEntity cupo, LocalDate fecha) {
+        return cupoDiaRepository.findByCupo_IdAndFecha(cupo.getId(), fecha)
+                .orElseGet(() -> nuevoDia(cupo, fecha, cupo.getBase(), BigDecimal.ZERO));
+    }
+
+    /** Partidas del día sin firmar que aún no descuentan. */
+    private BigDecimal pendiente(CupoEntity cupo, LocalDate fecha, UUID excluir) {
+        return cero(partidaRepository.pendienteFirma(cupo.getArea().getId(), cupo.getInsumo().getId(),
+                fecha.atStartOfDay(), fecha.plusDays(1).atStartOfDay(), excluir != null ? excluir : SIN_ID));
+    }
+
+    /** Las partidas solo se editan y eliminan el mismo día (hora de México). */
+    private void exigirDeHoy(PartidaEntity p, String accion) {
+        if (!p.getFecha().toLocalDate().equals(hoy())) {
+            throw new GenericExeption("La partida " + p.getFolio() + " es de un día anterior: ya no se puede " + accion + ".");
+        }
+    }
+
+    /** Al aceptar y al recibir: no se entrega más de lo que hay en el almacén. */
+    private void validarExistencia(SolicitudStockEntity s, BigDecimal cantidad) {
+        BigDecimal existencia = existencia(s.getAlmacen().getId(), s.getInsumo().getId());
+        if (cantidad.compareTo(existencia) > 0) {
+            throw new GenericExeption("El " + s.getAlmacen().getNombre() + " solo tiene " + num(existencia) + " de "
+                    + s.getInsumo().getNombre() + ".");
+        }
+    }
+
+    private static boolean fueraDeTiempoParaEditar(SolicitudStockEntity s) {
+        return s.getFechaSolicitud() != null && s.getFechaSolicitud().plusSeconds(SEGUNDOS_EDITAR_SOLICITUD).isBefore(ahora());
+    }
+
+    /**
+     * Almacenes que el usuario puede usar al agregar tarjetas: los que tiene a cargo y los de sus áreas.
+     * El administrador, o quien no tiene ninguno asignado, puede usar todos (igual que el front).
+     */
+    private void exigirAlmacenPermitido(AlmacenEntity almacen) {
+        MisPermisos p = misPermisos();
+        if (p.esAdmin()) return;
+        Set<UUID> permitidos = new HashSet<>(p.responsableAlmacen());
+        for (UUID areaId : p.responsableArea()) {
+            departamentoRepository.findById(areaId)
+                    .filter(d -> d.getAlmacen() != null)
+                    .ifPresent(d -> permitidos.add(d.getAlmacen().getId()));
+        }
+        if (!permitidos.isEmpty() && !permitidos.contains(almacen.getId())) {
+            throw new AccessDeniedException("No tienes permitido el " + almacen.getNombre() + ".");
+        }
     }
 
     /** «Roto por» solo con CAMBIO_ROTO (obligatorio); firma el empleado que rompió o el usuario. */
@@ -607,10 +765,15 @@ public class InventarioDiarioService {
         return notificacionService.destinatariosPorTipo(tipo);
     }
 
+    /** A quien solicitó, siempre, y además a los roles con el tipo activado (sin repetir). */
     private void notificarRespuesta(SolicitudStockEntity s, String mensaje) {
-        List<EmpleadosEntity> para = s.getSolicitadoPor() != null ? List.of(s.getSolicitadoPor())
-                : notificacionService.destinatariosPorTipo(TipoNotificacion.SOLICITUD_STOCK_RESPUESTA);
-        notificar(para, "Respuesta del almacén", mensaje, TipoNotificacion.SOLICITUD_STOCK_RESPUESTA);
+        Map<UUID, EmpleadosEntity> para = new LinkedHashMap<>();
+        if (s.getSolicitadoPor() != null) para.put(s.getSolicitadoPor().getId(), s.getSolicitadoPor());
+        for (EmpleadosEntity e : Optional.ofNullable(notificacionService.destinatariosPorTipo(TipoNotificacion.SOLICITUD_STOCK_RESPUESTA))
+                .orElse(List.of())) {
+            para.putIfAbsent(e.getId(), e);
+        }
+        notificar(new ArrayList<>(para.values()), "Respuesta del almacén", mensaje, TipoNotificacion.SOLICITUD_STOCK_RESPUESTA);
     }
 
     private void notificar(List<EmpleadosEntity> para, String titulo, String mensaje, TipoNotificacion tipo) {
@@ -655,18 +818,19 @@ public class InventarioDiarioService {
                 .consumido(BigDecimal.ZERO).faltante(faltante.max(BigDecimal.ZERO)).build();
     }
 
-    private Cupo toCupo(CupoEntity c, CupoDiaEntity d) {
-        BigDecimal inicial = d != null ? d.getInicial() : BigDecimal.ZERO;
-        BigDecimal ampliado = d != null ? d.getAmpliado() : BigDecimal.ZERO;
-        BigDecimal consumido = d != null ? d.getConsumido() : BigDecimal.ZERO;
+    /** consumido = lo firmado; disponible descuenta también lo pendiente de firma; existencia = la real. */
+    private Cupo toCupo(CupoEntity c, LocalDate fecha) {
+        CupoDiaEntity d = valoresDia(c, fecha);
+        BigDecimal pendiente = pendiente(c, fecha, null);
         SolicitudAbierta abierta = solicitudRepository
                 .findFirstByArea_IdAndInsumo_IdAndEstatusInAndDeletedFalse(c.getArea().getId(), c.getInsumo().getId(), ABIERTAS)
                 .map(s -> new SolicitudAbierta(s.getId(), s.getFolio(), s.getEstatus())).orElse(null);
         return new Cupo(c.getId(), c.getArea().getId(), c.getInsumo().getId(), c.getInsumo().getNombre(), unidad(c.getInsumo()),
                 c.getAlmacen().getId(), c.getAlmacen().getNombre(), c.isPorDefecto(), c.getBase(), c.getMinimo(),
-                inicial, ampliado, consumido, inicial.add(ampliado).subtract(consumido),
-                d != null ? d.getFaltante() : BigDecimal.ZERO,
-                existencia(c.getAlmacen().getId(), c.getInsumo().getId()), abierta);
+                d.getInicial(), d.getAmpliado(), d.getConsumido(), d.disponible().subtract(pendiente),
+                d.getFaltante(), existencia(c.getAlmacen().getId(), c.getInsumo().getId()), abierta,
+                pendiente, c.getCreadoPor() != null ? c.getCreadoPor().getId() : null, nombre(c.getCreadoPor()),
+                c.getInsumo().getIdImagen());
     }
 
     private Confirmacion toConfirmacion(ConfirmacionEntity c) {
@@ -692,7 +856,8 @@ public class InventarioDiarioService {
                 s.getCantidadSolicitada(), s.getCantidadAEntregar(), s.getCantidadRecibida(), s.getNota(),
                 s.getSolicitadoPor() != null ? s.getSolicitadoPor().getId() : null, nombre(s.getSolicitadoPor()),
                 s.getFechaSolicitud(), s.getEstatus(), nombre(s.getConfirmadoPor()), s.getFechaConfirmacion(),
-                s.getComentario(), s.getFechaRecepcion(), nombre(s.getRecibidoPor()), s.getIdImagenFirma());
+                s.getComentario(), s.getFechaRecepcion(), nombre(s.getRecibidoPor()), s.getIdImagenFirma(),
+                s.getFirmaAlmacen(), s.getFechaFirmaAlmacen(), nombre(s.getFirmadoAlmacenPor()));
     }
 
     private Area toArea(DepartamentoEntity d) {

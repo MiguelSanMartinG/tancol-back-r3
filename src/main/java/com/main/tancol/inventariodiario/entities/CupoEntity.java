@@ -3,6 +3,7 @@ package com.main.tancol.inventariodiario.entities;
 import com.main.tancol.almacen.entities.AlmacenEntity;
 import com.main.tancol.common.entities.base.BaseEntity;
 import com.main.tancol.empleados.entities.DepartamentoEntity;
+import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.producto.entities.insumos.ProductoBasicoEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -48,4 +49,9 @@ public class CupoEntity extends BaseEntity {
 
     @Column(name = "minimo", nullable = false, precision = 19, scale = 2)
     private BigDecimal minimo;
+
+    /** Empleado que agregó la tarjeta: solo él la puede eliminar. Null en las tarjetas por defecto. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "creado_por_id")
+    private EmpleadosEntity creadoPor;
 }

@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** Partida (entrega) del inventario diario: descuenta del cupo del día y del almacén. */
+/** Partida (entrega) del inventario diario: al firmarse descuenta del cupo de su día y del almacén. */
 @Entity
 @Table(name = "inv_diario_partidas")
 @SuperBuilder
@@ -79,4 +79,11 @@ public class PartidaEntity extends BaseEntity {
 
     @Column(name = "fecha_firma")
     private LocalDateTime fechaFirma;
+
+    /**
+     * Ya movió el cupo y la existencia del almacén. Desde el 27-11 se descuenta al firmar; las
+     * partidas anteriores se descontaron al guardarse y vienen marcadas por la migración V26.
+     */
+    @Column(name = "descontado", nullable = false)
+    private boolean descontado;
 }

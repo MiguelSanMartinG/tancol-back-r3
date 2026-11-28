@@ -2,10 +2,12 @@ package com.main.tancol.cuadreinventario.controllers;
 
 import com.main.tancol.common.dto.PageResponse;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CapturaRequest;
+import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CategoriaAlmacenResponse;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CerrarRequest;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.CrearRequest;
 import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.Response;
 import com.main.tancol.cuadreinventario.enums.EstadoCuadre;
+import com.main.tancol.cuadreinventario.enums.TipoCuadre;
 import com.main.tancol.cuadreinventario.service.CuadreInventarioService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,8 +32,15 @@ public class CuadreInventarioController {
 
     @GetMapping
     public ResponseEntity<List<Response>> listar(@RequestParam(required = false) UUID idAlmacen,
-                                                 @RequestParam(required = false) EstadoCuadre estado) {
-        return ResponseEntity.ok(service.listar(idAlmacen, estado));
+                                                 @RequestParam(required = false) EstadoCuadre estado,
+                                                 @RequestParam(required = false) TipoCuadre tipo) {
+        return ResponseEntity.ok(service.listar(idAlmacen, estado, tipo));
+    }
+
+    /** Categorías con insumos en el almacén, para elegir en «Nuevo cuadre». */
+    @GetMapping("/almacenes/{idAlmacen}/categorias")
+    public ResponseEntity<List<CategoriaAlmacenResponse>> categoriasDelAlmacen(@PathVariable UUID idAlmacen) {
+        return ResponseEntity.ok(service.categoriasConInsumos(idAlmacen));
     }
 
     @GetMapping("/page")

@@ -25,4 +25,8 @@ public interface InvDiarioInventarioRepository extends JpaRepository<InventarioE
 
     @Query("SELECT i FROM InventarioEntity i JOIN FETCH i.productoBasicoEntity p WHERE i.almacen.id = :almacenId AND i.deleted = false AND p.deleted = false ORDER BY p.nombre")
     List<InventarioEntity> delAlmacen(@Param("almacenId") UUID almacenId);
+
+    /** [almacenId, insumos con registro] de todos los almacenes (para «400 insumos» en el selector). */
+    @Query("SELECT i.almacen.id, COUNT(DISTINCT p.id) FROM InventarioEntity i JOIN i.productoBasicoEntity p WHERE i.deleted = false AND p.deleted = false GROUP BY i.almacen.id")
+    List<Object[]> totalesPorAlmacen();
 }

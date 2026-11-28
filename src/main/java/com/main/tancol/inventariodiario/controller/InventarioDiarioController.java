@@ -158,4 +158,18 @@ public class InventarioDiarioController {
                              @RequestParam(value = "idImagenFirma", required = false) String idImagenFirma) {
         return service.recibir(id, cantidadRecibida, archivo, idImagenFirma);
     }
+
+    /** El solicitante no acepta lo entregado (solo en ACEPTADO y sin firma). Cuerpo { motivo? }. */
+    @PutMapping("/solicitudes/{id}/declinar")
+    public Solicitud declinar(@PathVariable UUID id, @RequestBody(required = false) Declinar dto) {
+        return service.declinar(id, dto);
+    }
+
+    /** Firma de entrega del responsable del almacén: multipart con «archivo» o «idImagenFirma». */
+    @PostMapping(value = "/solicitudes/{id}/firma-almacen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Solicitud firmarAlmacen(@PathVariable UUID id,
+                                   @RequestPart(value = "archivo", required = false) MultipartFile archivo,
+                                   @RequestParam(value = "idImagenFirma", required = false) String idImagenFirma) {
+        return service.firmarAlmacen(id, archivo, idImagenFirma);
+    }
 }

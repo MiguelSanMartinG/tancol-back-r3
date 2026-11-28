@@ -6,6 +6,7 @@ import com.main.tancol.common.specification.PagePredicates;
 import com.main.tancol.cuadreinventario.entities.CuadreInventarioEntity;
 import com.main.tancol.cuadreinventario.entities.CuadreInventarioPartidaEntity;
 import com.main.tancol.cuadreinventario.enums.EstadoCuadre;
+import com.main.tancol.cuadreinventario.enums.TipoCuadre;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -82,6 +83,7 @@ public class CuadreInventarioPageSpecification implements Specification<CuadreIn
                 case "folio" -> PagePredicates.like(cb, root.get("folio"), value);
                 case "almacen" -> almacen(cb, almacen, value, key);
                 case "estado" -> root.get("estado").in(estados(value, key));
+                case "tipo" -> root.get("tipo").in(tipos(value, key));
                 case "creadoPor" -> empleadoTexto(cb, creadoPor, value);
                 case "cerradoPor" -> empleadoTexto(cb, cerradoPor, value);
                 case "fecha", "fechaCreacion" -> PagePredicates.dateTimeRange(cb, root.get("fechaCreacion"), value);
@@ -181,6 +183,18 @@ public class CuadreInventarioPageSpecification implements Specification<CuadreIn
         List<EstadoCuadre> out = new ArrayList<>();
         for (String t : tokens(value)) {
             out.add(PagePredicates.enumOf(EstadoCuadre.class, t.toUpperCase(Locale.ROOT), key));
+        }
+        if (out.isEmpty()) {
+            throw new FilterNotFound("Invalid filter: filter_" + key);
+        }
+        return out;
+    }
+
+    /** Uno o varios tipos separados por coma (igual que estado). Los cuadres sin tipo no coinciden. */
+    private static List<TipoCuadre> tipos(String value, String key) {
+        List<TipoCuadre> out = new ArrayList<>();
+        for (String t : tokens(value)) {
+            out.add(PagePredicates.enumOf(TipoCuadre.class, t.toUpperCase(Locale.ROOT), key));
         }
         if (out.isEmpty()) {
             throw new FilterNotFound("Invalid filter: filter_" + key);

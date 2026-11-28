@@ -12,8 +12,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Estado del cupo en un día. Se crea al confirmar el día; al día siguiente no hay fila y el cupo
- * vuelve a la base con una nueva confirmación (cierre diario a las 23:59:59, hora de México).
+ * Estado del cupo en un día. Se crea con la base de la tarjeta la primera vez que el día se usa
+ * (ya no hay confirmación del día). consumido = solo lo firmado.
  */
 @Entity
 @Table(name = "inv_diario_cupo_dia")

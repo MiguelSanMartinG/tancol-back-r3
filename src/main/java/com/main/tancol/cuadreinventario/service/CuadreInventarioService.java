@@ -13,10 +13,13 @@ import com.main.tancol.cuadreinventario.dto.CuadreInventarioDTOs.*;
 import com.main.tancol.cuadreinventario.entities.CuadreInventarioEntity;
 import com.main.tancol.cuadreinventario.entities.CuadreInventarioPartidaEntity;
 import com.main.tancol.cuadreinventario.enums.EstadoCuadre;
+import com.main.tancol.cuadreinventario.enums.TipoCuadre;
 import com.main.tancol.cuadreinventario.repositories.CuadreInventarioRepository;
 import com.main.tancol.cuadreinventario.util.CuadreInventarioPageSpecification;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
 import com.main.tancol.empleados.helpers.EmpleadoContext;
+import com.main.tancol.producto.entities.insumos.CategoriaProductoEntity;
+import com.main.tancol.producto.repositories.CategoriaProductoRepository;
 import com.main.tancol.producto.service.insumo.StockMinimoRevisionService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Sort;
@@ -30,6 +33,7 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Cuadre de inventario por almacén. Al abrirlo se congela la existencia del sistema de cada
@@ -45,19 +49,27 @@ public class CuadreInventarioService {
     private final AlmacenRepository almacenRepository;
     private final InventarioRepository inventarioRepository;
     private final StockMinimoRevisionService stockMinimoRevisionService;
+    private final CategoriaProductoRepository categoriaProductoRepository;
 
     public CuadreInventarioService(CuadreInventarioRepository repository,
                                    AlmacenRepository almacenRepository,
                                    InventarioRepository inventarioRepository,
-                                   StockMinimoRevisionService stockMinimoRevisionService) {
+                                   StockMinimoRevisionService stockMinimoRevisionService,
+                                   CategoriaProductoRepository categoriaProductoRepository) {
         this.repository = repository;
         this.almacenRepository = almacenRepository;
         this.inventarioRepository = inventarioRepository;
         this.stockMinimoRevisionService = stockMinimoRevisionService;
+        this.categoriaProductoRepository = categoriaProductoRepository;
     }
 
     @Transactional(readOnly = true)
     public List<Response> listar(UUID idAlmacen, EstadoCuadre estado) {
+        return listar(idAlmacen, estado, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Response> listar(UUID idAlmacen, EstadoCuadre estado, TipoCuadre tipo) {
         Specification<CuadreInventarioEntity> spec = (root, query, cb) -> {
             List<Predicate> predicados = new ArrayList<>();
             predicados.add(cb.isFalse(root.get("deleted")));
@@ -67,6 +79,9 @@ public class CuadreInventarioService {
             if (estado != null) {
                 predicados.add(cb.equal(root.get("estado"), estado));
             }
+            if (tipo != null) {
+                predicados.add(cb.equal(root.get("tipo"), tipo));
+            }
             return cb.and(predicados.toArray(new Predicate[0]));
         };
         return repository.findAll(spec, Sort.by(Sort.Direction.DESC, "fechaCreacion")).stream()
@@ -75,13 +90,14 @@ public class CuadreInventarioService {
     }
 
     private static final Set<String> PAGE_FILTERS = Set.of(
-            "folio", "almacen", "estado", "creadoPor", "fecha", "fechaCreacion", "cerradoPor", "fechaCierre",
+            "folio", "almacen", "estado", "tipo", "creadoPor", "fecha", "fechaCreacion", "cerradoPor", "fechaCierre",
             "ajusteAplicado", "ajuste", "partidasConDiferencia"
     );
     private static final Map<String, String> PAGE_SORTS = Map.ofEntries(
             Map.entry("folio", "folio"),
             Map.entry("almacen", "almacen.nombre"),
             Map.entry("estado", "estado"),
+            Map.entry("tipo", "tipo"),
             Map.entry("creadoPor", "creadoPor.nombre"),
             Map.entry("fecha", "fechaCreacion"),
             Map.entry("fechaCreacion", "fechaCreacion"),
@@ -131,31 +147,64 @@ public class CuadreInventarioService {
         return toResponse(buscar(id), true);
     }
 
+    /**
+     * Abre un cuadre. Con {@code idsCategoria} solo entran los productos del almacén cuya categoría es una
+     * de las elegidas o una subcategoría de ellas (a cualquier profundidad); sin categorías, todo el almacén.
+     */
     @Transactional
     public Response crear(CrearRequest dto) {
-        AlmacenEntity almacen = almacenRepository.findById(dto.getIdAlmacen())
-                .filter(a -> !a.isDeleted())
-                .orElseThrow(() -> new IDNotFound("No se encontró el almacén"));
+        TipoCuadre tipo = tipoObligatorio(dto.getTipo());
+        AlmacenEntity almacen = buscarAlmacen(dto.getIdAlmacen());
         if (repository.existsByAlmacen_IdAndEstadoAndDeletedFalse(almacen.getId(), EstadoCuadre.ABIERTO)) {
             throw new GenericExeption("Ya hay un cuadre abierto para el almacén " + almacen.getNombre()
                     + ". Ciérralo o cancélalo antes de abrir otro.");
         }
-        List<InventarioEntity> inventario = inventarioRepository.findAll(
-                (root, query, cb) -> cb.and(
-                        cb.equal(root.get("almacen").get("id"), almacen.getId()),
-                        cb.isFalse(root.get("deleted"))));
+        List<UUID> idsCategoria = Optional.ofNullable(dto.getIdsCategoria()).orElse(List.of()).stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        List<CategoriaProductoEntity> elegidas = List.of();
+        Set<UUID> categoriasAContar = Set.of();
+        if (!idsCategoria.isEmpty()) {
+            Map<UUID, CategoriaProductoEntity> categorias = StreamSupport
+                    .stream(categoriaProductoRepository.findAll().spliterator(), false)
+                    .filter(c -> !c.isDeleted())
+                    .collect(Collectors.toMap(CategoriaProductoEntity::getId, c -> c, (a, b) -> a));
+            elegidas = idsCategoria.stream()
+                    .map(id -> Optional.ofNullable(categorias.get(id))
+                            .orElseThrow(() -> new IDNotFound("No se encontró la categoría " + id)))
+                    .toList();
+            categoriasAContar = conSubcategorias(idsCategoria, categorias.values());
+        }
+
+        List<InventarioEntity> inventario = inventarioDelAlmacen(almacen.getId());
         if (inventario.isEmpty()) {
             throw new GenericExeption("El almacén " + almacen.getNombre() + " no tiene inventario para cuadrar.");
+        }
+        if (!categoriasAContar.isEmpty()) {
+            Set<UUID> filtro = categoriasAContar;
+            inventario = inventario.stream()
+                    .filter(item -> {
+                        var producto = item.getProductoBasicoEntity();
+                        var categoria = producto != null ? producto.getCategoriaProductoEntity() : null;
+                        return categoria != null && filtro.contains(categoria.getId());
+                    })
+                    .toList();
+            if (inventario.isEmpty()) {
+                throw new GenericExeption("El almacén no tiene insumos de las categorías elegidas");
+            }
         }
 
         CuadreInventarioEntity cuadre = CuadreInventarioEntity.builder()
                 .folio(String.format("CI-%05d", repository.siguienteFolio()))
                 .almacen(almacen)
+                .tipo(tipo)
                 .estado(EstadoCuadre.ABIERTO)
                 .creadoPor(EmpleadoContext.getEmpleadoActual())
                 .fechaCreacion(ahora())
                 .ajusteAplicado(false)
                 .build();
+        cuadre.getCategorias().addAll(elegidas);
         for (InventarioEntity item : inventario) {
             var producto = item.getProductoBasicoEntity();
             cuadre.getPartidas().add(CuadreInventarioPartidaEntity.builder()
@@ -171,6 +220,36 @@ public class CuadreInventarioService {
         cuadre.getPartidas().sort(Comparator.comparing(
                 p -> Optional.ofNullable(p.getProducto()).orElse(""), String.CASE_INSENSITIVE_ORDER));
         return toResponse(repository.save(cuadre), true);
+    }
+
+    /**
+     * Categorías con insumos en el almacén y cuántos productos distintos tiene cada una (solo los de esa
+     * categoría, sin sumar sus subcategorías). Los productos sin categoría no se listan.
+     */
+    @Transactional(readOnly = true)
+    public List<CategoriaAlmacenResponse> categoriasConInsumos(UUID idAlmacen) {
+        AlmacenEntity almacen = buscarAlmacen(idAlmacen);
+        Map<UUID, CategoriaProductoEntity> categorias = new HashMap<>();
+        Map<UUID, Set<UUID>> productosPorCategoria = new HashMap<>();
+        for (InventarioEntity item : inventarioDelAlmacen(almacen.getId())) {
+            var producto = item.getProductoBasicoEntity();
+            var categoria = producto != null ? producto.getCategoriaProductoEntity() : null;
+            if (categoria == null) {
+                continue;
+            }
+            categorias.putIfAbsent(categoria.getId(), categoria);
+            productosPorCategoria.computeIfAbsent(categoria.getId(), k -> new HashSet<>()).add(producto.getId());
+        }
+        return categorias.values().stream()
+                .map(c -> CategoriaAlmacenResponse.builder()
+                        .idCategoria(c.getId())
+                        .nombre(c.getNombre())
+                        .nombreCategoriaPadre(c.getCategoriaPadre() != null ? c.getCategoriaPadre().getNombre() : null)
+                        .totalInsumos(productosPorCategoria.get(c.getId()).size())
+                        .build())
+                .sorted(Comparator.comparing(c -> Optional.ofNullable(c.getNombre()).orElse(""),
+                        String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     @Transactional
@@ -257,6 +336,50 @@ public class CuadreInventarioService {
         cuadre.setObservaciones(limpiar(observaciones));
     }
 
+    private AlmacenEntity buscarAlmacen(UUID idAlmacen) {
+        return almacenRepository.findById(idAlmacen)
+                .filter(a -> !a.isDeleted())
+                .orElseThrow(() -> new IDNotFound("No se encontró el almacén"));
+    }
+
+    private List<InventarioEntity> inventarioDelAlmacen(UUID idAlmacen) {
+        return inventarioRepository.findAll(
+                (root, query, cb) -> cb.and(
+                        cb.equal(root.get("almacen").get("id"), idAlmacen),
+                        cb.isFalse(root.get("deleted"))));
+    }
+
+    static TipoCuadre tipoObligatorio(String valor) {
+        String opciones = Arrays.stream(TipoCuadre.values()).map(Enum::name).collect(Collectors.joining(", "));
+        if (valor == null || valor.isBlank()) {
+            throw new GenericExeption("El tipo de cuadre es obligatorio (" + opciones + ").");
+        }
+        try {
+            return TipoCuadre.valueOf(valor.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new GenericExeption("El tipo de cuadre " + valor.trim() + " no es válido. Usa uno de: " + opciones + ".");
+        }
+    }
+
+    /** Las categorías elegidas más todas sus descendientes (categorías cuyo padre está en el conjunto). */
+    static Set<UUID> conSubcategorias(Collection<UUID> elegidas, Collection<CategoriaProductoEntity> todas) {
+        Map<UUID, List<UUID>> hijosPorPadre = new HashMap<>();
+        for (CategoriaProductoEntity c : todas) {
+            if (c.getCategoriaPadre() != null && c.getCategoriaPadre().getId() != null) {
+                hijosPorPadre.computeIfAbsent(c.getCategoriaPadre().getId(), k -> new ArrayList<>()).add(c.getId());
+            }
+        }
+        Set<UUID> resultado = new HashSet<>();
+        Deque<UUID> pendientes = new ArrayDeque<>(elegidas);
+        while (!pendientes.isEmpty()) {
+            UUID id = pendientes.pop();
+            if (resultado.add(id)) {
+                pendientes.addAll(hijosPorPadre.getOrDefault(id, List.of()));
+            }
+        }
+        return resultado;
+    }
+
     private CuadreInventarioEntity buscar(UUID id) {
         return repository.findById(id)
                 .filter(c -> !c.isDeleted())
@@ -304,6 +427,12 @@ public class CuadreInventarioService {
                 .id(c.getId())
                 .folio(c.getFolio())
                 .almacen(new AlmacenRef(c.getAlmacen().getId(), c.getAlmacen().getNombre()))
+                .tipo(c.getTipo())
+                .categorias(Optional.ofNullable(c.getCategorias()).orElse(Set.of()).stream()
+                        .map(cat -> new CategoriaRef(cat.getId(), cat.getNombre()))
+                        .sorted(Comparator.comparing(cat -> Optional.ofNullable(cat.getNombre()).orElse(""),
+                                String.CASE_INSENSITIVE_ORDER))
+                        .toList())
                 .estado(c.getEstado())
                 .creadoPor(nombre(c.getCreadoPor()))
                 .fechaCreacion(c.getFechaCreacion())

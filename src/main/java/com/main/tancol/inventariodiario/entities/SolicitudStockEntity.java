@@ -88,4 +88,15 @@ public class SolicitudStockEntity extends BaseEntity {
 
     @Column(name = "id_imagen_firma", length = 300)
     private String idImagenFirma;
+
+    /** Firma de entrega del responsable del almacén. */
+    @Column(name = "firma_almacen", length = 300)
+    private String firmaAlmacen;
+
+    @Column(name = "fecha_firma_almacen")
+    private LocalDateTime fechaFirmaAlmacen;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "firmado_almacen_por")
+    private EmpleadosEntity firmadoAlmacenPor;
 }

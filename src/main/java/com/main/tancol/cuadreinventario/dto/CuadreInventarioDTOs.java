@@ -1,6 +1,7 @@
 package com.main.tancol.cuadreinventario.dto;
 
 import com.main.tancol.cuadreinventario.enums.EstadoCuadre;
+import com.main.tancol.cuadreinventario.enums.TipoCuadre;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -28,6 +29,13 @@ public final class CuadreInventarioDTOs {
     public static class CrearRequest {
         @NotNull
         private UUID idAlmacen;
+        /**
+         * DIARIO, SEMANAL, MENSUAL, TRIMESTRAL, SEMESTRAL o ANUAL (obligatorio). Llega como texto para
+         * responder con un mensaje claro si falta o no es válido (el servicio lo valida).
+         */
+        private String tipo;
+        /** Categorías a contar (incluye sus subcategorías). Vacío o null = todo el almacén. */
+        private List<UUID> idsCategoria;
     }
 
     @Getter
@@ -71,6 +79,25 @@ public final class CuadreInventarioDTOs {
     @Getter
     @Builder
     @AllArgsConstructor
+    public static class CategoriaRef {
+        private UUID id;
+        private String nombre;
+    }
+
+    /** Categoría con insumos en un almacén (GET /cuadre-inventario/almacenes/{idAlmacen}/categorias). */
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class CategoriaAlmacenResponse {
+        private UUID idCategoria;
+        private String nombre;
+        private String nombreCategoriaPadre;
+        private long totalInsumos;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
     public static class PartidaResponse {
         private UUID idPartida;
         private UUID idProducto;
@@ -89,6 +116,10 @@ public final class CuadreInventarioDTOs {
         private UUID id;
         private String folio;
         private AlmacenRef almacen;
+        /** Null en cuadres anteriores a este campo. */
+        private TipoCuadre tipo;
+        /** Categorías contadas; vacío = todo el almacén. */
+        private List<CategoriaRef> categorias;
         private EstadoCuadre estado;
         private String creadoPor;
         private LocalDateTime fechaCreacion;

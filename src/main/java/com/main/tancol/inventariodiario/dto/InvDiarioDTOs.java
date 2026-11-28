@@ -18,7 +18,8 @@ public final class InvDiarioDTOs {
     // ------------------------------------------------------------------ catálogos
     public record Area(UUID id, String nombre, UUID almacenId, String almacenNombre) {}
 
-    public record Almacen(UUID id, String nombre, UUID responsableId, String responsableNombre) {}
+    /** totalInsumos: insumos con registro en el almacén (Inventario inicial). */
+    public record Almacen(UUID id, String nombre, UUID responsableId, String responsableNombre, long totalInsumos) {}
 
     public record Insumo(UUID id, String nombre, String unidad, BigDecimal existencia) {}
 
@@ -33,11 +34,16 @@ public final class InvDiarioDTOs {
     // ------------------------------------------------------------------ cupos
     public record SolicitudAbierta(UUID id, String folio, EstatusSolicitud estatus) {}
 
+    /**
+     * consumido: solo lo firmado; pendienteFirma: lo registrado hoy sin firmar;
+     * disponible = inicial + ampliado − consumido − pendienteFirma; existencia: la real del almacén.
+     */
     public record Cupo(UUID id, UUID areaId, UUID insumoId, String insumoNombre, String unidad,
                        UUID almacenId, String almacenNombre, boolean porDefecto,
                        BigDecimal base, BigDecimal minimo,
                        BigDecimal inicial, BigDecimal ampliado, BigDecimal consumido, BigDecimal disponible,
-                       BigDecimal faltante, BigDecimal existencia, SolicitudAbierta solicitudAbierta) {}
+                       BigDecimal faltante, BigDecimal existencia, SolicitudAbierta solicitudAbierta,
+                       BigDecimal pendienteFirma, UUID creadoPorId, String creadoPor, String idImagen) {}
 
     public record CupoCrear(UUID areaId, UUID almacenId, UUID insumoId, BigDecimal base, BigDecimal minimo) {}
 
@@ -79,7 +85,8 @@ public final class InvDiarioDTOs {
                             BigDecimal cantidadSolicitada, BigDecimal cantidadAEntregar, BigDecimal cantidadRecibida,
                             String nota, UUID solicitadoPorId, String solicitadoPor, LocalDateTime fechaSolicitud,
                             EstatusSolicitud estatus, String confirmadoPor, LocalDateTime fechaConfirmacion,
-                            String comentario, LocalDateTime fechaRecepcion, String recibidoPor, String firma) {}
+                            String comentario, LocalDateTime fechaRecepcion, String recibidoPor, String firma,
+                            String firmaAlmacen, LocalDateTime fechaFirmaAlmacen, String firmadoAlmacenPor) {}
 
     public record SolicitudCrear(UUID areaId, UUID insumoId, BigDecimal cantidad, String nota) {}
 
@@ -88,4 +95,6 @@ public final class InvDiarioDTOs {
     public record Aceptar(BigDecimal cantidadAEntregar, String comentario) {}
 
     public record Rechazar(String comentario) {}
+
+    public record Declinar(String motivo) {}
 }

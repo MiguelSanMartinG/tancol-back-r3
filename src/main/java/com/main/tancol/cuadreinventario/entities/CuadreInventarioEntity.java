@@ -3,15 +3,20 @@ package com.main.tancol.cuadreinventario.entities;
 import com.main.tancol.almacen.entities.AlmacenEntity;
 import com.main.tancol.common.entities.base.BaseEntity;
 import com.main.tancol.cuadreinventario.enums.EstadoCuadre;
+import com.main.tancol.cuadreinventario.enums.TipoCuadre;
 import com.main.tancol.empleados.entities.EmpleadosEntity;
+import com.main.tancol.producto.entities.insumos.CategoriaProductoEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -77,4 +82,18 @@ public class CuadreInventarioEntity extends BaseEntity {
     @OrderBy("producto ASC")
     @Builder.Default
     private List<CuadreInventarioPartidaEntity> partidas = new ArrayList<>();
+
+    /** Periodicidad del conteo. Null en cuadres anteriores a este campo. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 20)
+    private TipoCuadre tipo;
+
+    /** Categorías elegidas al crear el cuadre (sin expandir subcategorías). Vacío = todo el almacén. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "cuadre_inventario_categorias",
+            joinColumns = @JoinColumn(name = "cuadre_id"),
+            inverseJoinColumns = @JoinColumn(name = "categoria_id"))
+    @BatchSize(size = 50)
+    @Builder.Default
+    private Set<CategoriaProductoEntity> categorias = new LinkedHashSet<>();
 }
